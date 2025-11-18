@@ -18,7 +18,6 @@ class Application extends Model
         'review_candidate',
         'review_company',
         'candidates_id',
-        'created_by',
         'job_postings_id',
     ];
 

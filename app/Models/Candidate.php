@@ -9,7 +9,7 @@ class Candidate extends Model
 {
     use HasFactory;
 
-    public $timestamps = false; // Tidak ada created_at/updated_at di tabel candidates
+    public $timestamps = false;
 
     protected $fillable = [
         'name',
@@ -56,7 +56,7 @@ class Candidate extends Model
         return $this->hasMany(HistoryPoint::class, 'candidates_id');
     }
 
-    // Many-to-Many Relationships (Pivot Tables)
+
 
     // Skills kandidat
     public function skills()
