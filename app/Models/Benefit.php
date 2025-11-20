@@ -19,7 +19,6 @@ class Benefit extends Model
      * Relationships
      */
 
-    // Benefit -> Job Postings yang menawarkan benefit ini (Many to Many)
     public function jobPostings()
     {
         return $this->belongsToMany(JobPosting::class, 'job_posting_benefits', 'benefits_id', 'job_postings_id')

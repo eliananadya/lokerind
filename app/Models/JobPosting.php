@@ -72,13 +72,11 @@ class JobPosting extends Model
         return $this->hasMany(Application::class, 'job_postings_id');
     }
 
-    // Skills yang dibutuhkan
     public function skills()
     {
         return $this->belongsToMany(Skill::class, 'job_postings_skills', 'job_postings_id', 'skills_id');
     }
 
-    // Benefits
     public function benefits()
     {
         return $this->belongsToMany(Benefit::class, 'job_posting_benefits', 'job_postings_id', 'benefits_id')

@@ -16,20 +16,11 @@ class Feedback extends Model
         'for', // 'candidate' atau 'company'
     ];
 
-    /**
-     * Relationships
-     */
-
-    // Feedback -> Applications (Many to Many via pivot)
     public function applications()
     {
         return $this->belongsToMany(Application::class, 'feedback_applications', 'feedbacks_id', 'applications_id')
             ->withPivot('given_by', 'created_at');
     }
-
-    /**
-     * Scope untuk filter feedback
-     */
 
     // Get feedback untuk candidate
     public function scopeForCandidate($query)

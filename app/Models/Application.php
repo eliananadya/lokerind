@@ -19,12 +19,16 @@ class Application extends Model
         'review_company',
         'candidates_id',
         'job_postings_id',
+        'invited_at',
+        'invited_by_company',
     ];
 
     protected $casts = [
         'applied_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'invited_at' => 'datetime',
+        'invited_by_company' => 'boolean',
     ];
 
     public function candidate()
@@ -39,7 +43,7 @@ class Application extends Model
 
     public function historyPoint()
     {
-        return $this->hasOne(HistoryPoint::class, 'applications_id');
+        return $this->hasMany(HistoryPoint::class, 'applications_id');
     }
 
     public function reports()
@@ -47,17 +51,19 @@ class Application extends Model
         return $this->hasMany(Report::class, 'applications_id');
     }
 
-    public function feedbacksFromCandidate()
+    public function feedbacks()
     {
         return $this->belongsToMany(Feedback::class, 'feedback_applications', 'applications_id', 'feedbacks_id')
-            ->wherePivot('given_by', 'candidate')
             ->withPivot('given_by', 'created_at');
+    }
+
+    public function feedbacksFromCandidate()
+    {
+        return $this->feedbacks()->wherePivot('given_by', 'candidate');
     }
 
     public function feedbacksFromCompany()
     {
-        return $this->belongsToMany(Feedback::class, 'feedback_applications', 'applications_id', 'feedbacks_id')
-            ->wherePivot('given_by', 'company')
-            ->withPivot('given_by', 'created_at');
+        return $this->feedbacks()->wherePivot('given_by', 'company');
     }
 }
