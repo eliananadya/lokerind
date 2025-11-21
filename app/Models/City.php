@@ -19,7 +19,6 @@ class City extends Model
         return $this->hasMany(JobPosting::class, 'cities_id');
     }
 
-    // City → Preferred Cities (Many to Many)
     public function candidates()
     {
         return $this->belongsToMany(Candidate::class, 'preffered_cities', 'cities_id', 'candidates_id');

@@ -15,10 +15,6 @@ class Benefit extends Model
         'name',
     ];
 
-    /**
-     * Relationships
-     */
-
     public function jobPostings()
     {
         return $this->belongsToMany(JobPosting::class, 'job_posting_benefits', 'benefits_id', 'job_postings_id')

@@ -83,8 +83,7 @@ class JobPosting extends Model
             ->withPivot('benefit_type', 'amount');
     }
 
-    // Kandidat yang save lowongan ini
-    public function savedByUsers()
+    public function savedByCandidates()
     {
         return $this->belongsToMany(Candidate::class, 'save_jobs', 'job_postings_id', 'candidates_id')
             ->withPivot('created_at');

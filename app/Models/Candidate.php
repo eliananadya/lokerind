@@ -35,7 +35,6 @@ class Candidate extends Model
         'persentage_acc' => 'decimal:2',
     ];
 
-    // Relationships
     public function user()
     {
         return $this->belongsTo(User::class, 'users_id');
@@ -46,7 +45,7 @@ class Candidate extends Model
         return $this->hasMany(Application::class, 'candidates_id');
     }
 
-    public function portofolios()
+    public function portfolios()
     {
         return $this->hasMany(Portfolio::class, 'candidates_id');
     }
@@ -56,46 +55,37 @@ class Candidate extends Model
         return $this->hasMany(HistoryPoint::class, 'candidates_id');
     }
 
-
-
-    // Skills kandidat
     public function skills()
     {
         return $this->belongsToMany(Skill::class, 'candidates_skills', 'candidates_id', 'skills_id');
     }
 
-    // Preferensi kota
     public function preferredCities()
     {
         return $this->belongsToMany(City::class, 'preffered_cities', 'candidates_id', 'cities_id');
     }
 
-    // Preferensi hari
     public function preferredDays()
     {
         return $this->belongsToMany(Day::class, 'preffered_days', 'candidates_id', 'days_id');
     }
 
-    // Preferensi industri
     public function preferredIndustries()
     {
         return $this->belongsToMany(Industry::class, 'preffered_industries', 'candidates_id', 'industries_id');
     }
 
-    // Preferensi tipe job
     public function preferredTypeJobs()
     {
         return $this->belongsToMany(TypeJob::class, 'preffered_type_jobs', 'candidates_id', 'type_jobs_id');
     }
 
-    // Lowongan yang disimpan
     public function savedJobs()
     {
         return $this->belongsToMany(JobPosting::class, 'save_jobs', 'candidates_id', 'job_postings_id')
             ->withPivot('created_at');
     }
 
-    // Subscribe ke company
     public function subscribedCompanies()
     {
         return $this->belongsToMany(Company::class, 'subscribes', 'candidates_id', 'companies_id')
