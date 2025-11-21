@@ -43,7 +43,7 @@ class Application extends Model
 
     public function historyPoint()
     {
-        return $this->hasMany(HistoryPoint::class, 'applications_id');
+        return $this->hasOne(HistoryPoint::class, 'applications_id');
     }
 
     public function reports()
