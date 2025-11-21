@@ -1,18 +1,16 @@
+@php
+    $hideNavbar = true;
+    $hideFooter = true;
+@endphp
 @extends('layouts.main')
 
 @section('content')
     <div class="container-fluid vh-100">
         <div class="row h-100">
             <!-- Left Side - Image -->
-            <div class="col-md-6 bg-light d-flex align-items-center justify-content-center">
-                <div class="text-center">
-                    <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="20" y="20" width="160" height="160" rx="10" stroke="#999" stroke-width="4"
-                            fill="none" />
-                        <circle cx="80" cy="70" r="15" fill="#999" />
-                        <path d="M40 140 L80 100 L120 130 L160 90" stroke="#999" stroke-width="4" stroke-linecap="round"
-                            stroke-linejoin="round" fill="none" />
-                    </svg>
+            <div class="col-md-6 left-side d-flex align-items-center justify-content-center">
+                <div class="image-container">
+                    <img src="{{ asset('assets/images/job.png') }}" alt="Job Illustration" class="img-fluid">
                 </div>
             </div>
 
@@ -46,13 +44,13 @@
 
                         <!-- Login Button -->
                         <div class="d-grid mb-4">
-                            <button type="submit" class="btn btn-secondary btn-lg">Login</button>
+                            <button type="submit" class="btn btn-primary-custom btn-lg text-white">Login</button>
                         </div>
 
                         <!-- Sign Up Link -->
                         <div class="text-center">
                             <span class="text-muted">Don't have an account?</span>
-                            <a href="/register" class="text-decoration-none">Sign up here</a>
+                            <a href="#" class="text-decoration-none text-primary-custom fw-semibold">Sign up here</a>
                         </div>
                     </form>
                 </div>

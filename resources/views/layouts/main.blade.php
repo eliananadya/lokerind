@@ -4,14 +4,22 @@
 <head>
     @include('layouts.meta')
     @include('layouts.style')
+    @stack('css')
 </head>
 
 <body>
-    @include('layouts.navbar')
+    @if (!isset($hideNavbar) || !$hideNavbar)
+        @include('layouts.navbar')
+    @endif
 
     @yield('content')
 
-    @include('layouts.footer')
+    @if (!isset($hideFooter) || !$hideFooter)
+        @include('layouts.footer')
+    @endif
+
+    @include('layouts.script')
+    @stack('js')
 </body>
 
 </html>

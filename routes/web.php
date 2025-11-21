@@ -6,5 +6,9 @@ use Illuminate\Support\Facades\Auth;
 
 
 Route::get('/', function () {
-    return view('auth.login');
+    return view('candidates.lowongan');
+});
+
+Route::get('/register', function () {
+    return view('auth.register');
 });
