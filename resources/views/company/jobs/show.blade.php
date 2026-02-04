@@ -536,9 +536,6 @@
                     <a href="{{ route('company.jobs.index') }}" class="btn btn-light">
                         <i class="bi bi-arrow-left me-2"></i>Kembali
                     </a>
-                    <a href="{{ route('company.jobs.edit', $job->id) }}" class="btn btn-warning">
-                        <i class="bi bi-pencil me-2"></i>Edit
-                    </a>
                 </div>
             </div>
         </div>

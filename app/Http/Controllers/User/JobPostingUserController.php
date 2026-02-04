@@ -192,8 +192,17 @@ class JobPostingUserController extends Controller
                 'preferredDays'
             ]);
 
+            // ✅ CEK: Apakah kandidat punya preferensi?
+            $hasPreferences =
+                $candidate->preferredCities->count() > 0 ||
+                $candidate->preferredTypeJobs->count() > 0 ||
+                $candidate->preferredIndustries->count() > 0 ||
+                $candidate->skills->count() > 0 ||
+                $candidate->preferredDays->count() > 0;
+
             Log::info('Candidate Relations Loaded', [
                 'candidate_id' => $candidate->id,
+                'has_preferences' => $hasPreferences,
                 'skills_count' => $candidate->skills->count(),
                 'cities_count' => $candidate->preferredCities->count(),
                 'type_jobs_count' => $candidate->preferredTypeJobs->count(),
@@ -242,7 +251,7 @@ class JobPostingUserController extends Controller
             // ========================================
             // CALCULATE & STORE BINARY MATCHING
             // ========================================
-            $jobPostings = $jobPostings->map(function ($job) use ($candidate) {
+            $jobPostings = $jobPostings->map(function ($job) use ($candidate, $hasPreferences) {
                 try {
                     // Hitung dan simpan ke database
                     $match = JobCandidateMatch::storeMatch($candidate, $job);
@@ -259,17 +268,24 @@ class JobPostingUserController extends Controller
                     // Alias untuk compatibility
                     $job->similarity_score = $match->match_percentage;
 
+                    // ✅ JIKA TIDAK PUNYA PREFERENSI, SET SCORE 0 TAPI TETAP TAMPILKAN
+                    if (!$hasPreferences) {
+                        $job->match_percentage = 0;
+                        $job->similarity_score = 0;
+                    }
+
                     Log::debug('Job Match Calculated', [
                         'job_id' => $job->id,
                         'job_title' => $job->title,
                         'match_percentage' => $match->match_percentage,
+                        'has_preferences' => $hasPreferences
                     ]);
 
                     return $job;
                 } catch (\Exception $e) {
                     Log::error('Error calculating match for job ' . $job->id . ': ' . $e->getMessage());
 
-                    // Set default values jika error
+                    // Set default values jika error (TETAP TAMPILKAN JOB)
                     $job->match_percentage = 0;
                     $job->city_match = 0;
                     $job->type_job_match = 0;
@@ -507,7 +523,15 @@ class JobPostingUserController extends Controller
                     'preferredDays'
                 ]);
 
-                $jobs = $jobs->map(function ($job) use ($candidate) {
+                // ✅ CEK: Apakah kandidat punya preferensi?
+                $hasPreferences =
+                    $candidate->preferredCities->count() > 0 ||
+                    $candidate->preferredTypeJobs->count() > 0 ||
+                    $candidate->preferredIndustries->count() > 0 ||
+                    $candidate->skills->count() > 0 ||
+                    $candidate->preferredDays->count() > 0;
+
+                $jobs = $jobs->map(function ($job) use ($candidate, $hasPreferences) {
                     // Hitung binary match
                     $match = JobCandidateMatch::getMatchData($candidate, $job);
 
@@ -520,11 +544,18 @@ class JobPostingUserController extends Controller
                     $job->day_match = $match['day_match'];
                     $job->similarity_score = $match['match_percentage'];
 
+                    // ✅ JIKA TIDAK PUNYA PREFERENSI, SET SCORE 0 TAPI TETAP TAMPILKAN
+                    if (!$hasPreferences) {
+                        $job->match_percentage = 0;
+                        $job->similarity_score = 0;
+                    }
+
                     return $job;
                 });
 
                 Log::info('Binary Matching applied in search', [
                     'candidate_id' => $candidate->id,
+                    'has_preferences' => $hasPreferences,
                     'jobs_with_match' => $jobs->count()
                 ]);
             } catch (\Exception $e) {

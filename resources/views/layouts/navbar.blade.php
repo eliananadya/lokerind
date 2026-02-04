@@ -62,20 +62,20 @@
                             <a class="nav-link {{ request()->routeIs('company.dashboard') ? 'active' : '' }}"
                                 href="{{ route('company.dashboard') }}">Dashboard</a>
                         </li>
-                        <li class="nav-item mx-2">
+                        {{-- <li class="nav-item mx-2">
                             <a class="nav-link {{ request()->routeIs('company.candidates.match') ? 'active' : '' }}"
                                 href="{{ route('company.candidates.match') }}">
                                 Kandidat Cocok
                             </a>
-                        </li>
+                        </li> --}}
                         <li class="nav-item mx-2">
                             <a class="nav-link {{ request()->is('dashboard/riwayat*') ? 'active' : '' }}"
                                 href="{{ route('company.riwayat.index') }}">Riwayat</a>
                         </li>
-                        <li class="nav-item mx-2">
+                        {{-- <li class="nav-item mx-2">
                             <a class="nav-link {{ request()->routeIs('company.jobs.index') ? 'active' : '' }}"
                                 href="{{ route('company.jobs.index') }}">Kelola Jobs</a>
-                        </li>
+                        </li> --}}
                         <li class="nav-item mx-2">
                             <a class="nav-link {{ request()->routeIs('company.profile') ? 'active' : '' }}"
                                 href="{{ route('company.profile') }}">Profile</a>

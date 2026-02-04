@@ -128,81 +128,6 @@
             opacity: 0.9;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s;
-            border-left: 5px solid;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
-            border-radius: 50%;
-            transform: translate(30%, -30%);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .stat-card.primary {
-            border-left-color: #3b82f6;
-        }
-
-        .stat-card.warning {
-            border-left-color: #f59e0b;
-        }
-
-        .stat-card.success {
-            border-left-color: #10b981;
-        }
-
-        .stat-card.danger {
-            border-left-color: #ef4444;
-        }
-
-        .stat-card.info {
-            border-left-color: #06b6d4;
-        }
-
-        .stat-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            opacity: 0.8;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-label {
-            color: #6b7280;
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
         .main-card {
             background: white;
             border-radius: 20px;
@@ -588,10 +513,6 @@
                 font-size: 1.75rem;
             }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
             .nav-tabs .nav-link {
                 padding: 1rem;
                 font-size: 0.9rem;
@@ -655,55 +576,6 @@
                 </div>
             </div>
 
-            <div class="stats-grid">
-                <div class="stat-card primary">
-                    <div class="stat-icon">
-                        <i class="bi bi-file-earmark-text"></i>
-                    </div>
-                    <div class="stat-value">{{ $stats['total_applications'] }}</div>
-                    <div class="stat-label">Total Aplikasi</div>
-                </div>
-
-                <div class="stat-card warning">
-                    <div class="stat-icon">
-                        <i class="bi bi-hourglass-split"></i>
-                    </div>
-                    <div class="stat-value">{{ $stats['pending_applications'] }}</div>
-                    <div class="stat-label">Pending</div>
-                </div>
-
-                <div class="stat-card success">
-                    <div class="stat-icon">
-                        <i class="bi bi-check-circle"></i>
-                    </div>
-                    <div class="stat-value">{{ $stats['accepted_applications'] }}</div>
-                    <div class="stat-label">Diterima</div>
-                </div>
-
-                <div class="stat-card danger">
-                    <div class="stat-icon">
-                        <i class="bi bi-x-circle"></i>
-                    </div>
-                    <div class="stat-value">{{ $stats['rejected_applications'] }}</div>
-                    <div class="stat-label">Ditolak</div>
-                </div>
-
-                <div class="stat-card info">
-                    <div class="stat-icon">
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <div class="stat-value">{{ $stats['average_rating'] }}</div>
-                    <div class="stat-label">Rating Rata-rata</div>
-                </div>
-
-                <div class="stat-card primary">
-                    <div class="stat-icon">
-                        <i class="bi bi-chat-quote"></i>
-                    </div>
-                    <div class="stat-value">{{ $stats['total_reviews'] }}</div>
-                    <div class="stat-label">Total Review</div>
-                </div>
-            </div>
 
             <div class="main-card">
                 <div class="filter-bar">
@@ -1690,8 +1562,8 @@
                             </label>
                             <div class="star-rating" id="starRating">
                                 ${[1,2,3,4,5].map(star => `
-                                                                                <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
-                                                                            `).join('')}
+                                                                                                        <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
+                                                                                                    `).join('')}
                             </div>
                             <input type="hidden" id="ratingValue" value="0">
                         </div>

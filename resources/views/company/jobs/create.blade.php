@@ -341,7 +341,7 @@
 </style>
 @section('content')
     <div class="container py-4">
-        <!-- Header (sama seperti sebelumnya) -->
+        <!-- Header -->
         <div class="page-header">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -354,7 +354,7 @@
             </div>
         </div>
 
-        <!-- Progress Steps (sama seperti sebelumnya) -->
+        <!-- Progress Steps -->
         <div class="progress-steps">
             <div class="progress-step active">
                 <div class="step-number">1</div>
@@ -374,7 +374,7 @@
             </div>
         </div>
 
-        <!-- Required Fields Note (sama seperti sebelumnya) -->
+        <!-- Required Fields Note -->
         <div class="required-fields-note">
             <i class="bi bi-info-circle me-2"></i>
             <strong>Catatan:</strong> Field yang ditandai dengan <span class="text-danger">*</span> wajib diisi
@@ -387,7 +387,6 @@
             <div class="form-section">
                 <h5><i class="bi bi-info-circle"></i>Informasi Dasar</h5>
                 <div class="row">
-                    <!-- Existing fields... -->
                     <div class="col-md-6 mb-3">
                         <label for="title" class="form-label">
                             <i class="bi bi-briefcase text-primary"></i>
@@ -454,7 +453,6 @@
                             placeholder="Contoh: Jl. Sudirman No.123" required>
                     </div>
 
-                    {{-- ✅ REVISI 2: SALARY + TYPE SALARY --}}
                     <div class="col-md-4 mb-3">
                         <label for="salary" class="form-label">
                             <i class="bi bi-cash text-primary"></i>
@@ -491,7 +489,7 @@
                 </div>
             </div>
 
-            <!-- Persyaratan Kandidat (sama seperti sebelumnya) -->
+            <!-- Persyaratan Kandidat -->
             <div class="form-section">
                 <h5><i class="bi bi-person-check"></i>Persyaratan Kandidat</h5>
                 <div class="row">
@@ -582,7 +580,7 @@
                 </div>
             </div>
 
-            <!-- Keterampilan (sama seperti sebelumnya) -->
+            <!-- Keterampilan -->
             <div class="form-section">
                 <h5><i class="bi bi-tools"></i>Keterampilan yang Dibutuhkan</h5>
                 <select class="form-select select2-multiple" id="skills" name="skills[]" multiple>
@@ -592,9 +590,9 @@
                 </select>
             </div>
 
-            {{-- ✅ REVISI 1: BENEFIT WITH TYPE & AMOUNT --}}
+            <!-- Benefit -->
             <div class="form-section">
-                <h5><i class="bi bi-gift"></i>Benefit & Fasilitas</h5>
+                <h5><i class="bi bi-gift"></i>Benefit & Fasilitas <small class="text-muted">(Opsional)</small></h5>
 
                 <div id="benefitsContainer">
                     <div class="benefit-item" data-index="0">
@@ -647,11 +645,11 @@
 
                 <div class="helper-text mt-2">
                     <i class="bi bi-lightbulb"></i>
-                    Benefit menarik akan meningkatkan minat kandidat
+                    Benefit yang menarik akan meningkatkan minat kandidat
                 </div>
             </div>
 
-            {{-- ✅ REVISI 3: MULTIPLE JOB DATES WITH TIME --}}
+            <!-- Jadwal Kerja -->
             <div class="form-section">
                 <h5><i class="bi bi-calendar-week"></i>Jadwal Kerja</h5>
 
@@ -668,12 +666,10 @@
                                     <i class="bi bi-calendar-day text-primary"></i>
                                     Hari <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-select select2-day" name="job_dates[0][day_id]" required>
-                                    <option value="">Pilih Hari</option>
-                                    @foreach ($days as $day)
-                                        <option value="{{ $day->id }}">{{ $day->name }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="text" class="form-control day-display" name="job_dates[0][day_display]"
+                                    readonly placeholder="Pilih tanggal dulu"
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                                <input type="hidden" name="job_dates[0][day_id]" class="day-id-input">
                             </div>
 
                             <div class="col-md-3 mb-3">
@@ -681,7 +677,7 @@
                                     <i class="bi bi-calendar-event text-primary"></i>
                                     Tanggal <span class="text-danger">*</span>
                                 </label>
-                                <input type="date" class="form-control" name="job_dates[0][date]" required>
+                                <input type="date" class="form-control date-input" name="job_dates[0][date]" required>
                             </div>
 
                             <div class="col-md-3 mb-3">
@@ -709,7 +705,7 @@
 
                 <div class="helper-text mt-2">
                     <i class="bi bi-lightbulb"></i>
-                    Contoh: Tanggal 22 Desember jam 08:00-10:00, Tanggal 23 Desember jam 09:00-20:00
+                    Hari akan otomatis terisi saat Anda memilih tanggal
                 </div>
             </div>
 
@@ -745,8 +741,9 @@
                 <button type="submit" name="action" value="draft" class="btn btn-outline-primary" id="saveDraftBtn">
                     <i class="bi bi-save me-2"></i>Simpan sebagai Draft
                 </button>
-                <button type="submit" name="action" value="publish" class="btn btn-primary-custom" id="publishBtn">
-                    <i class="bi bi-check-lg me-2"></i>Publikasikan Lowongan
+                <button type="submit" name="action" value="publish" class="btn btn-primary-custom text-white"
+                    id="publishBtn">
+                    <i class="bi bi-check-lg me-2 text-white"></i>Publikasikan Lowongan
                 </button>
             </div>
         </form>
@@ -760,6 +757,25 @@
 <script>
     let benefitIndex = 1;
     let jobDateIndex = 1;
+
+    // ✅ DAY MAPPING: passed from controller as $dayMapping
+    // Format: { 'senin': { id: '1', name: 'Monday' }, ... }
+    const dayMapping = @json($dayMapping);
+
+    // ✅ JS getDay() index → nama hari Indonesia
+    // getDay(): 0=Sunday, 1=Monday, 2=Tuesday, ..., 6=Saturday
+    const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+
+    // ✅ CORE FUNCTION: given a date string (YYYY-MM-DD), resolve day_id + display name
+    function resolveDayFromDate(dateString) {
+        // Tambahkan T00:00:00 biar gak kena timezone shift
+        const date = new Date(dateString + 'T00:00:00');
+        const jsDay = date.getDay(); // 0–6
+        const dayNameIndo = dayNames[jsDay]; // misal 'rabu'
+        const dayData = dayMapping[dayNameIndo]; // misal { id: '3', name: 'Wednesday' }
+
+        return dayData || null;
+    }
 
     $(document).ready(function() {
         // Initialize Select2
@@ -781,22 +797,39 @@
             allowClear: true
         });
 
-        $('.select2-day').select2({
-            width: '100%',
-            placeholder: 'Pilih Hari...',
-            allowClear: true
-        });
-
-        // Date validation
+        // Date validation — open_recruitment min = hari ini
         const today = new Date().toISOString().split('T')[0];
         $('#open_recruitment').attr('min', today);
 
         $('#open_recruitment').on('change', function() {
-            const openDate = $(this).val();
-            $('#close_recruitment').attr('min', openDate);
+            $('#close_recruitment').attr('min', $(this).val());
         });
 
-        // Form submission
+        // ✅ Set min date untuk semua date-input yang sudah ada di DOM
+        $('.date-input').attr('min', today);
+
+        // ✅ DELEGATED EVENT: tangkap change pada .date-input (termasuk yang ditambahkan later)
+        $(document).on('change', '.date-input', function() {
+            const $dateInput = $(this);
+            const $container = $dateInput.closest('.job-date-item');
+            const $dayDisplay = $container.find('.day-display');
+            const $dayIdInput = $container.find('.day-id-input');
+
+            const dateValue = $dateInput.val();
+            if (!dateValue) return;
+
+            const dayData = resolveDayFromDate(dateValue);
+
+            if (dayData) {
+                $dayDisplay.val(dayData.name);
+                $dayIdInput.val(dayData.id);
+            } else {
+                $dayDisplay.val('');
+                $dayIdInput.val('');
+            }
+        });
+
+        // ✅ FORM SUBMIT
         $('#jobPostingForm').on('submit', function(e) {
             e.preventDefault();
 
@@ -826,66 +859,78 @@
             });
         });
 
-        function submitForm(status) {
-            Swal.fire({
-                title: 'Menyimpan...',
-                html: '<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>',
-                showConfirmButton: false,
-                allowOutsideClick: false
-            });
+        // ✅ INITIALIZE: benefit type check on page load
+        $('select[name*="[benefit_type]"]').each(function() {
+            const $typeSelect = $(this);
+            const $amountInput = $typeSelect.closest('.row').find('input[name*="[amount]"]');
 
-            const formData = new FormData($('#jobPostingForm')[0]);
-            formData.append('status', status);
-
-            $.ajax({
-                url: '{{ route('company.jobs.store') }}',
-                method: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            html: `<p>${response.message}</p>`,
-                            timer: 2000,
-                            timerProgressBar: true,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.href = '{{ route('company.jobs.index') }}';
-                        });
-                    }
-                },
-                error: function(xhr) {
-                    let errorMessage = 'Gagal menyimpan lowongan';
-                    let errorDetails = '';
-
-                    if (xhr.responseJSON) {
-                        errorMessage = xhr.responseJSON.message || errorMessage;
-
-                        if (xhr.responseJSON.errors) {
-                            errorDetails = '<ul class="text-start mt-2">';
-                            Object.values(xhr.responseJSON.errors).forEach(function(error) {
-                                errorDetails += `<li>${error[0]}</li>`;
-                            });
-                            errorDetails += '</ul>';
-                        }
-                    }
-
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal Menyimpan',
-                        html: errorMessage + errorDetails,
-                        confirmButtonColor: '#dc3545'
-                    });
-                }
-            });
-        }
+            if ($typeSelect.val() === 'in kind') {
+                $amountInput.prop('disabled', true).val('');
+                $amountInput.attr('placeholder', 'Tidak diperlukan untuk In Kind');
+                $amountInput.css('background-color', '#e9ecef');
+            }
+        });
     });
 
-    // ✅ ADD BENEFIT FUNCTION
-    // ✅ ADD BENEFIT FUNCTION (UPDATED)
+    // --------- SUBMIT ---------
+    function submitForm(status) {
+        Swal.fire({
+            title: 'Menyimpan...',
+            html: '<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>',
+            showConfirmButton: false,
+            allowOutsideClick: false
+        });
+
+        const formData = new FormData($('#jobPostingForm')[0]);
+        formData.append('status', status);
+
+        $.ajax({
+            url: '{{ route('company.jobs.store') }}',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        html: `<p>${response.message}</p>`,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '{{ route('company.jobs.index') }}';
+                    });
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'Gagal menyimpan lowongan';
+                let errorDetails = '';
+
+                if (xhr.responseJSON) {
+                    errorMessage = xhr.responseJSON.message || errorMessage;
+
+                    if (xhr.responseJSON.errors) {
+                        errorDetails = '<ul class="text-start mt-2">';
+                        Object.values(xhr.responseJSON.errors).forEach(function(error) {
+                            errorDetails += `<li>${error[0]}</li>`;
+                        });
+                        errorDetails += '</ul>';
+                    }
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Menyimpan',
+                    html: errorMessage + errorDetails,
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        });
+    }
+
+    // --------- BENEFIT: ADD / REMOVE ---------
     function addBenefit() {
         const container = $('#benefitsContainer');
         const newBenefit = `
@@ -930,39 +975,33 @@
                         placeholder="Contoh: 500000 atau 1 unit">
                 </div>
             </div>
-        </div>
-    `;
+        </div>`;
 
         container.append(newBenefit);
 
-        // Reinitialize Select2 for new element
         $(`select[name="benefits[${benefitIndex}][benefit_id]"]`).select2({
             width: '100%',
             placeholder: 'Pilih Benefit...',
             allowClear: true
         });
 
-        // Show remove button for first item if more than 1
         if ($('.benefit-item').length > 1) {
-            $('.benefit-item').find('.remove-benefit-btn').show();
+            $('.benefit-item .remove-benefit-btn').show();
         }
 
         benefitIndex++;
     }
 
-
-    // ✅ REMOVE BENEFIT FUNCTION
     function removeBenefit(index) {
         $(`.benefit-item[data-index="${index}"]`).remove();
-
-        // Hide remove button if only 1 item left
         if ($('.benefit-item').length === 1) {
-            $('.benefit-item').find('.remove-benefit-btn').hide();
+            $('.benefit-item .remove-benefit-btn').hide();
         }
     }
 
-    // ✅ ADD JOB DATE FUNCTION
+    // --------- JOB DATE: ADD / REMOVE ---------
     function addJobDate() {
+        const today = new Date().toISOString().split('T')[0];
         const container = $('#jobDatesContainer');
         const newJobDate = `
             <div class="job-date-item" data-index="${jobDateIndex}">
@@ -976,12 +1015,12 @@
                             <i class="bi bi-calendar-day text-primary"></i>
                             Hari <span class="text-danger">*</span>
                         </label>
-                        <select class="form-select select2-day" name="job_dates[${jobDateIndex}][day_id]" required>
-                            <option value="">Pilih Hari</option>
-                            @foreach ($days as $day)
-                                <option value="{{ $day->id }}">{{ $day->name }}</option>
-                            @endforeach
-                        </select>
+                        <input type="text" class="form-control day-display"
+                               name="job_dates[${jobDateIndex}][day_display]"
+                               readonly
+                               placeholder="Pilih tanggal dulu"
+                               style="background-color: #e9ecef; cursor: not-allowed;">
+                        <input type="hidden" name="job_dates[${jobDateIndex}][day_id]" class="day-id-input">
                     </div>
 
                     <div class="col-md-3 mb-3">
@@ -989,7 +1028,10 @@
                             <i class="bi bi-calendar-event text-primary"></i>
                             Tanggal <span class="text-danger">*</span>
                         </label>
-                        <input type="date" class="form-control" name="job_dates[${jobDateIndex}][date]" required>
+                        <input type="date" class="form-control date-input"
+                               name="job_dates[${jobDateIndex}][date]"
+                               min="${today}"
+                               required>
                     </div>
 
                     <div class="col-md-3 mb-3">
@@ -1008,76 +1050,42 @@
                         <input type="time" class="form-control" name="job_dates[${jobDateIndex}][end_time]" required>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
 
         container.append(newJobDate);
 
-        // Reinitialize Select2 for new element
-        $(`select[name="job_dates[${jobDateIndex}][day_id]"]`).select2({
-            width: '100%',
-            placeholder: 'Pilih Hari...',
-            allowClear: true
-        });
-
-        // Show remove button for first item if more than 1
         if ($('.job-date-item').length > 1) {
-            $('.job-date-item').find('.remove-date-btn').show();
+            $('.job-date-item .remove-date-btn').show();
         }
 
         jobDateIndex++;
     }
 
-    // ✅ REMOVE JOB DATE FUNCTION
     function removeJobDate(index) {
         $(`.job-date-item[data-index="${index}"]`).remove();
-
-        // Hide remove button if only 1 item left
         if ($('.job-date-item').length === 1) {
-            $('.job-date-item').find('.remove-date-btn').hide();
+            $('.job-date-item .remove-date-btn').hide();
         }
     }
-</script>
-<script>
-    // ✅ HANDLE BENEFIT TYPE CHANGE - DISABLE/ENABLE AMOUNT INPUT
+
+    // --------- BENEFIT TYPE CHANGE: toggle amount input ---------
     $(document).on('change', 'select[name*="[benefit_type]"]', function() {
         const $typeSelect = $(this);
         const $amountInput = $typeSelect.closest('.row').find('input[name*="[amount]"]');
         const selectedType = $typeSelect.val();
 
         if (selectedType === 'in kind') {
-            // ✅ Disable & clear amount input untuk In Kind
-            $amountInput.prop('disabled', true);
-            $amountInput.val('');
+            $amountInput.prop('disabled', true).val('');
             $amountInput.attr('placeholder', 'Tidak diperlukan untuk In Kind');
             $amountInput.css('background-color', '#e9ecef');
         } else if (selectedType === 'cash') {
-            // ✅ Enable amount input untuk Cash
             $amountInput.prop('disabled', false);
             $amountInput.attr('placeholder', 'Contoh: 500000');
             $amountInput.css('background-color', '#ffffff');
         } else {
-            // ✅ Reset jika belum dipilih
-            $amountInput.prop('disabled', false);
-            $amountInput.val('');
+            $amountInput.prop('disabled', false).val('');
             $amountInput.attr('placeholder', 'Contoh: 500000 atau 1 unit');
             $amountInput.css('background-color', '#ffffff');
         }
-    });
-
-    // ✅ INITIALIZE: Check initial state on page load
-    $(document).ready(function() {
-        $('select[name*="[benefit_type]"]').each(function() {
-            const $typeSelect = $(this);
-            const $amountInput = $typeSelect.closest('.row').find('input[name*="[amount]"]');
-            const selectedType = $typeSelect.val();
-
-            if (selectedType === 'in kind') {
-                $amountInput.prop('disabled', true);
-                $amountInput.val('');
-                $amountInput.attr('placeholder', 'Tidak diperlukan untuk In Kind');
-                $amountInput.css('background-color', '#e9ecef');
-            }
-        });
     });
 </script>

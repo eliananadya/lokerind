@@ -23,6 +23,32 @@ use Illuminate\Support\Facades\Validator;
 
 class JobPostingController extends Controller
 {
+    // ✅ HELPER: Build dayMapping dari collection $days
+    // Output: ['senin' => ['id' => 1, 'name' => 'Monday'], ...]
+    private function buildDayMapping(array|object $days): array
+    {
+        $map = [
+            'monday'    => 'senin',
+            'tuesday'   => 'selasa',
+            'wednesday' => 'rabu',
+            'thursday'  => 'kamis',
+            'friday'    => 'jumat',
+            'saturday'  => 'sabtu',
+            'sunday'    => 'minggu',
+        ];
+
+        $dayMapping = [];
+        foreach ($days as $day) {
+            $key = $map[strtolower($day->name)] ?? strtolower($day->name);
+            $dayMapping[$key] = [
+                'id'   => $day->id,
+                'name' => $day->name,
+            ];
+        }
+
+        return $dayMapping;
+    }
+
     /**
      * Display a listing of job postings for the company
      */
@@ -120,13 +146,11 @@ class JobPostingController extends Controller
     /**
      * Show the form for creating a new job posting
      */
-
     public function create()
     {
         try {
             $user = Auth::user();
 
-            // Gunakan first() bukan firstOrFail()
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
@@ -143,6 +167,9 @@ class JobPostingController extends Controller
             $benefits = Benefit::all();
             $days = Days::all();
 
+            // ✅ Build dayMapping untuk JS di view
+            $dayMapping = $this->buildDayMapping($days);
+
             return view('company.jobs.create', compact(
                 'company',
                 'industries',
@@ -150,7 +177,8 @@ class JobPostingController extends Controller
                 'typeJobs',
                 'skills',
                 'benefits',
-                'days'
+                'days',
+                'dayMapping'
             ));
         } catch (\Exception $e) {
             Log::error('Job create form error: ' . $e->getMessage());
@@ -170,7 +198,7 @@ class JobPostingController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'required|string',
                 'salary' => 'required|integer|min:0',
-                'type_salary' => 'required|in:total,shift', // ✅ NEW
+                'type_salary' => 'required|in:total,shift',
                 'address' => 'required|string|max:255',
                 'min_age' => 'required|integer|min:17|max:100',
                 'max_age' => 'required|integer|min:17|max:100|gte:min_age',
@@ -189,12 +217,12 @@ class JobPostingController extends Controller
                 'status' => 'required|in:Draft,Open',
                 'skills' => 'nullable|array',
                 'skills.*' => 'exists:skills,id',
-                // ✅ NEW: Benefits validation
+                // Benefits validation
                 'benefits' => 'nullable|array',
-                'benefits.*.benefit_id' => 'required_with:benefits|exists:benefits,id',
+                'benefits.*.benefit_id' => 'nullable:benefits|exists:benefits,id',
                 'benefits.*.benefit_type' => 'nullable|in:in kind,cash',
                 'benefits.*.amount' => 'nullable|string|max:255',
-                // ✅ NEW: Job dates validation
+                // Job dates validation
                 'job_dates' => 'required|array|min:1',
                 'job_dates.*.day_id' => 'required|exists:days,id',
                 'job_dates.*.date' => 'required|date',
@@ -220,7 +248,7 @@ class JobPostingController extends Controller
                 'title' => $request->title,
                 'description' => $request->description,
                 'salary' => $request->salary,
-                'type_salary' => $request->type_salary, // ✅ NEW
+                'type_salary' => $request->type_salary,
                 'address' => $request->address,
                 'min_age' => $request->min_age,
                 'max_age' => $request->max_age,
@@ -251,7 +279,7 @@ class JobPostingController extends Controller
                 }
             }
 
-            // ✅ NEW: Attach benefits with type and amount
+            // Attach benefits with type and amount
             if ($request->has('benefits') && is_array($request->benefits)) {
                 foreach ($request->benefits as $benefit) {
                     if (!empty($benefit['benefit_id'])) {
@@ -265,7 +293,7 @@ class JobPostingController extends Controller
                 }
             }
 
-            // ✅ NEW: Attach job dates with time
+            // Attach job dates with time
             if ($request->has('job_dates') && is_array($request->job_dates)) {
                 foreach ($request->job_dates as $jobDate) {
                     JobDates::create([
@@ -311,8 +339,6 @@ class JobPostingController extends Controller
             ], 500);
         }
     }
-
-
 
     /**
      * Display the specified job posting
@@ -366,7 +392,20 @@ class JobPostingController extends Controller
             $benefits = Benefit::all();
             $days = Days::all();
 
-            return view('company.jobs.edit', compact('job', 'company', 'industries', 'cities', 'typeJobs', 'skills', 'benefits', 'days'));
+            // ✅ Build dayMapping untuk JS di view
+            $dayMapping = $this->buildDayMapping($days);
+
+            return view('company.jobs.edit', compact(
+                'job',
+                'company',
+                'industries',
+                'cities',
+                'typeJobs',
+                'skills',
+                'benefits',
+                'days',
+                'dayMapping'
+            ));
         } catch (\Exception $e) {
             Log::error('Job edit form error: ' . $e->getMessage());
             return redirect()->route('company.jobs.index')->with('error', 'Lowongan tidak ditemukan.');
@@ -407,6 +446,7 @@ class JobPostingController extends Controller
             ], 500);
         }
     }
+
     /**
      * Update the specified job posting in storage
      */
@@ -436,12 +476,12 @@ class JobPostingController extends Controller
                 'status' => 'required|in:Draft,Open,Closed',
                 'skills' => 'nullable|array',
                 'skills.*' => 'exists:skills,id',
-                // ✅ NEW: Benefits validation
+                // Benefits validation
                 'benefits' => 'nullable|array',
                 'benefits.*.benefit_id' => 'required_with:benefits|exists:benefits,id',
                 'benefits.*.benefit_type' => 'nullable|in:in kind,cash',
                 'benefits.*.amount' => 'nullable|string|max:255',
-                // ✅ NEW: Job dates validation
+                // Job dates validation
                 'job_dates' => 'required|array|min:1',
                 'job_dates.*.day_id' => 'required|exists:days,id',
                 'job_dates.*.date' => 'required|date',
@@ -493,7 +533,7 @@ class JobPostingController extends Controller
                 'title' => $request->title,
                 'description' => $request->description,
                 'salary' => $request->salary,
-                'type_salary' => $request->type_salary, // ✅ NEW
+                'type_salary' => $request->type_salary,
                 'address' => $request->address,
                 'min_age' => $request->min_age,
                 'max_age' => $request->max_age,
@@ -523,7 +563,7 @@ class JobPostingController extends Controller
                 }
             }
 
-            // ✅ NEW: Update benefits with type and amount
+            // Update benefits with type and amount
             JobPostingBenefit::where('job_posting_id', $job->id)->delete();
             if ($request->has('benefits') && is_array($request->benefits)) {
                 foreach ($request->benefits as $benefit) {
@@ -538,7 +578,7 @@ class JobPostingController extends Controller
                 }
             }
 
-            // ✅ NEW: Update job dates with time
+            // Update job dates with time
             JobDates::where('job_posting_id', $job->id)->delete();
             if ($request->has('job_dates') && is_array($request->job_dates)) {
                 foreach ($request->job_dates as $jobDate) {
@@ -584,7 +624,6 @@ class JobPostingController extends Controller
         }
     }
 
-
     /**
      * Remove the specified job posting from storage
      */
@@ -622,7 +661,6 @@ class JobPostingController extends Controller
                 'company_id' => $company->id
             ]);
 
-            // ✅ Return with success message
             return redirect()->route('company.jobs.index')
                 ->with('success', "Lowongan \"{$jobTitle}\" berhasil dihapus!");
         } catch (\Exception $e) {
@@ -635,7 +673,7 @@ class JobPostingController extends Controller
             ]);
 
             return redirect()->route('company.jobs.index')
-                ->with('error', 'Gagal menghapus lowongan.Silakan coba lagi.');
+                ->with('error', 'Gagal menghapus lowongan. Silakan coba lagi.');
         }
     }
 }
