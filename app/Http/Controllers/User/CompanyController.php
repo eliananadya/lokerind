@@ -11,12 +11,12 @@ use App\Models\SaveJobs;
 use App\Models\Subscribes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Symfony\Component\Console\Application;
+use Illuminate\Support\Facades\Log;
 
 class CompanyController extends Controller
 {
     /**
-     * Display a listing of companies.
+     * Save job to candidate's saved list
      */
     public function saveJob(Request $request)
     {
@@ -33,7 +33,6 @@ class CompanyController extends Controller
             ], 404);
         }
 
-        // Cek apakah sudah di-save sebelumnya
         $exists = SaveJobs::where('candidates_id', $candidate->id)
             ->where('job_posting_id', $request->job_posting_id)
             ->exists();
@@ -56,6 +55,9 @@ class CompanyController extends Controller
         ]);
     }
 
+    /**
+     * Unsave job from candidate's saved list
+     */
     public function unsaveJob(Request $request)
     {
         $request->validate([
@@ -87,20 +89,23 @@ class CompanyController extends Controller
             'message' => 'Pekerjaan tidak ditemukan'
         ], 404);
     }
+
+    /**
+     * Subscribe to a company
+     */
     public function subscribeCompany(Request $request)
     {
         try {
             $user = Auth::user();
             $candidate = Candidates::where('user_id', $user->id)->first();
 
-            // if (!$candidate) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Profil kandidat tidak ditemukan!'
-            //     ], 404);
-            // }
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Profil kandidat tidak ditemukan!'
+                ], 404);
+            }
 
-            // Check if already subscribed
             $existingSubscribe = Subscribes::where('candidates_id', $candidate->id)
                 ->where('companies_id', $request->company_id)
                 ->first();
@@ -112,7 +117,6 @@ class CompanyController extends Controller
                 ], 400);
             }
 
-            // Create subscription
             Subscribes::create([
                 'candidates_id' => $candidate->id,
                 'companies_id' => $request->company_id,
@@ -130,6 +134,9 @@ class CompanyController extends Controller
         }
     }
 
+    /**
+     * Unsubscribe from a company
+     */
     public function unsubscribeCompany(Request $request)
     {
         try {
@@ -147,7 +154,7 @@ class CompanyController extends Controller
             }
 
             $deleted = Subscribes::where('candidates_id', $candidate->id)
-                ->where('companies_id', (int) $request->company_id) // paksa integer
+                ->where('companies_id', (int) $request->company_id)
                 ->delete();
 
             if ($deleted > 0) {
@@ -162,7 +169,7 @@ class CompanyController extends Controller
                 'message' => 'Data subscribe tidak ditemukan'
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('UNSUB ERROR: ' . $e->getMessage());
+            Log::error('UNSUB ERROR: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -171,14 +178,25 @@ class CompanyController extends Controller
         }
     }
 
-
+    /**
+     * Display a listing of companies
+     * ✅ FIX: Filter hanya job postings yang Approved dan Open
+     */
     public function index(Request $request)
     {
         $sortBy = $request->input('sort_by', 'name_asc');
 
-        $companies = Companies::with(['industries', 'jobPostings'])
+        // ✅ FIX: Eager load dengan filter Approved + Open
+        $companies = Companies::with([
+            'industries',
+            'jobPostings' => function ($query) {
+                $query->where('status', 'Open')
+                    ->where('verification_status', 'Approved');
+            }
+        ])
             ->withCount(['jobPostings as open_jobs_count' => function ($query) {
-                $query->where('status', 'Open');
+                $query->where('status', 'Open')
+                    ->where('verification_status', 'Approved');
             }]);
 
         // Apply sorting
@@ -205,7 +223,7 @@ class CompanyController extends Controller
                 $companies->orderBy('name', 'asc');
         }
 
-        $companies = $companies->paginate(10);
+        $companies = $companies->paginate(10)->withQueryString();
         $industries = Industries::all();
 
         $subscribedCompanyIds = [];
@@ -225,28 +243,29 @@ class CompanyController extends Controller
     }
 
     /**
-     * Display the specified company.
+     * Display the specified company
+     * ✅ FIX: Filter job postings yang Approved, hitung review yang valid
      */
-
     public function show($id)
     {
         $company = Companies::with([
             'industries',
+            // ✅ FIX: Filter job postings yang Approved dan Open
             'jobPostings' => function ($query) {
                 $query->where('status', 'Open')
+                    ->where('verification_status', 'Approved')
                     ->with([
                         'typeJobs',
                         'industry',
                         'city',
-                        'jobDatess.day', // ✅ Load job dates dengan relasi day
-                        'skills', // ✅ Load skills
-                        'benefits.benefit', // ✅ Load benefits
-                        'company' // ✅ Load company info
+                        'jobDatess.day',
+                        'skills',
+                        'benefits.benefit',
+                        'company'
                     ]);
             },
             'reviews.candidate'
         ])
-            ->withCount('reviews')
             ->findOrFail($id);
 
         // Check subscription status
@@ -260,7 +279,13 @@ class CompanyController extends Controller
             }
         }
 
-        // Rating stats
+        // ✅ FIX: Hitung total reviews yang valid (ada rating)
+        $totalReviews = $company->reviews()
+            ->whereNotNull('rating_company')
+            ->where('rating_company', '>', 0)
+            ->count();
+
+        // ✅ FIX: Rating stats yang akurat
         $ratingStats = [
             5 => $company->reviews->where('rating_company', 5)->count(),
             4 => $company->reviews->where('rating_company', 4)->count(),
@@ -269,8 +294,7 @@ class CompanyController extends Controller
             1 => $company->reviews->where('rating_company', 1)->count(),
         ];
 
-        // ✅ SERIALIZE JOB POSTINGS DENGAN JOB DATES
-        // ✅ FIX: Tambahkan use ($company) untuk akses variable di dalam closure
+        // ✅ SERIALIZE JOB POSTINGS
         $jobPostings = $company->jobPostings->map(function ($job) use ($company) {
             return [
                 'id' => $job->id,
@@ -280,6 +304,7 @@ class CompanyController extends Controller
                 'type_salary' => $job->type_salary,
                 'slot' => $job->slot,
                 'status' => $job->status,
+                'verification_status' => $job->verification_status,
                 'close_recruitment' => $job->close_recruitment,
                 'address' => $job->address,
                 'min_age' => $job->min_age,
@@ -312,7 +337,6 @@ class CompanyController extends Controller
                     'name' => $company->name,
                 ],
 
-                // ✅ SERIALIZE JOB DATES
                 'job_datess' => $job->jobDatess->map(function ($jobDate) {
                     return [
                         'id' => $jobDate->id,
@@ -326,7 +350,6 @@ class CompanyController extends Controller
                     ];
                 })->toArray(),
 
-                // ✅ SERIALIZE SKILLS
                 'skills' => $job->skills->map(function ($skill) {
                     return [
                         'id' => $skill->id,
@@ -334,7 +357,6 @@ class CompanyController extends Controller
                     ];
                 })->toArray(),
 
-                // ✅ SERIALIZE BENEFITS
                 'benefits' => $job->benefits->map(function ($benefit) {
                     return [
                         'id' => $benefit->id,
@@ -366,76 +388,72 @@ class CompanyController extends Controller
             ],
             'isSubscribed' => $isSubscribed,
             'rating_stats' => $ratingStats,
-            'total_reviews' => $company->reviews_count
+            'total_reviews' => $totalReviews // ✅ FIX: Gunakan yang sudah di-filter
         ]);
     }
+
     /**
-     * Search companies.
+     * Search companies
+     * ✅ FIX: Filter job postings yang Approved
      */
     public function searchCompanies(Request $request)
     {
         try {
-            \Log::info('Search Companies Request', $request->all());
+            Log::info('Search Companies Request', $request->all());
 
-            $query = Companies::with(['industries'])
+            // ✅ FIX: Eager load dengan filter Approved
+            $query = Companies::with([
+                'industries',
+                'jobPostings' => function ($q) {
+                    $q->where('status', 'Open')
+                        ->where('verification_status', 'Approved');
+                }
+            ])
                 ->withCount(['jobPostings as open_jobs_count' => function ($q) {
-                    $q->where('status', 'Open');
+                    $q->where('status', 'Open')
+                        ->where('verification_status', 'Approved');
                 }]);
 
-            // ✅ FILTER BY NAME
+            // Filter by name
             if ($request->filled('name')) {
                 $query->where('name', 'like', '%' . $request->name . '%');
             }
 
-            // ✅ FILTER BY INDUSTRY
+            // Filter by industry
             if ($request->filled('industry')) {
                 $query->where('industries_id', $request->industry);
             }
 
-            // ✅ APPLY SORTING (di database)
+            // Apply sorting
             $sortBy = $request->get('sort_by', 'name_asc');
 
             switch ($sortBy) {
                 case 'name_asc':
                     $query->orderBy('name', 'asc');
                     break;
-
                 case 'name_desc':
                     $query->orderBy('name', 'desc');
                     break;
-
                 case 'rating_desc':
-                    $query->orderBy('avg_rating', 'desc');
+                    $query->orderByDesc('avg_rating');
                     break;
-
                 case 'rating_asc':
                     $query->orderBy('avg_rating', 'asc');
                     break;
-
                 case 'jobs_desc':
-                    $query->orderBy('open_jobs_count', 'desc');
+                    $query->orderByDesc('open_jobs_count');
                     break;
-
                 case 'jobs_asc':
                     $query->orderBy('open_jobs_count', 'asc');
                     break;
-
                 default:
                     $query->orderBy('name', 'asc');
             }
 
-            \Log::info('Sorting Applied', ['sort_by' => $sortBy]);
+            Log::info('Sorting Applied', ['sort_by' => $sortBy]);
 
-            // ✅ PAGINATE
-            $companies = $query->paginate(10);
-
-            // ✅ LOAD JOB POSTINGS AFTER PAGINATION (untuk efisiensi)
-            $companies->getCollection()->transform(function ($company) {
-                $company->load(['jobPostings' => function ($q) {
-                    $q->where('status', 'Open');
-                }]);
-                return $company;
-            });
+            // Paginate
+            $companies = $query->paginate(10)->withQueryString();
 
             return response()->json([
                 'success' => true,
@@ -450,7 +468,7 @@ class CompanyController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error searching companies', [
+            Log::error('Error searching companies', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

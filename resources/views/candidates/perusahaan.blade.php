@@ -273,7 +273,10 @@
             <div class="row g-4" id="company-listings">
                 @foreach ($companies as $company)
                     @php
-                        $openJobsCount = $company->jobPostings->where('status', 'Open')->count();
+                        $openJobsCount = $company->jobPostings
+                            ->where('status', 'Open')
+                            ->where('verification_status', 'Approved')
+                            ->count();
                         $isSubscribed = in_array($company->id, $subscribedCompanyIds ?? []);
                     @endphp
                     <div class="col-lg-6">
@@ -628,6 +631,7 @@
                         updateSubscribeButton(isSubscribed);
                         checkSubscriptionStatus(currentCompanyId);
 
+                        // ✅ BASIC INFO
                         $('#modal-company-name').text(data.company.name || 'Nama perusahaan');
                         $('#modal-company-industry').text(data.company.industries ? data.company
                             .industries.name : 'Tipe Industri');
@@ -642,10 +646,12 @@
                             }) : 'Tanggal tidak tersedia';
                         $('#modal-company-joindate').text('Join date: ' + joinDate);
 
+                        // ✅ RATING
                         var rating = parseFloat(data.company.avg_rating) || 0;
                         $('#modal-company-rating').text(rating.toFixed(1));
                         $('#avg-rating-display').text(rating.toFixed(1));
 
+                        // ✅ FIX: TOTAL REVIEWS dari server yang sudah di-filter
                         var totalReviews = data.total_reviews || 0;
                         $('#modal-company-reviews').text(totalReviews + ' Ulasan');
                         $('#total-ratings').text(totalReviews + ' ratings');
@@ -658,13 +664,19 @@
                         }
                         $('#star-rating-display').html(stars);
 
-                        var openJobsCount = data.company.job_postings ? data.company.job_postings
-                            .filter(job => job.status === 'Open').length : 0;
+                        // ✅ FIX: TOTAL JOBS yang Approved dan Open
+                        var openJobsCount = data.company.job_postings ?
+                            data.company.job_postings.filter(job =>
+                                job.status === 'Open' && job.verification_status === 'Approved'
+                            ).length : 0;
+
                         $('#modal-company-jobs').text(openJobsCount + ' Jobs');
 
+                        // ✅ DESCRIPTION
                         $('#company-description').text(data.company.description ||
                             'Deskripsi tidak tersedia');
 
+                        // ✅ RATING BREAKDOWN
                         var ratingBreakdownHTML = '';
                         var ratingStats = data.rating_stats || {
                             5: 0,
@@ -679,20 +691,21 @@
                             var count = ratingStats[star] || 0;
                             var percentage = maxCount > 0 ? (count / maxCount * 100) : 0;
                             ratingBreakdownHTML += `
-                            <div class="mb-2">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-star-fill me-2"></i>
-                                    <span class="me-2">${star}</span>
-                                    <div class="progress flex-grow-1 me-2" style="height: 8px;">
-                                        <div class="progress-bar bg-warning" style="width: ${percentage}%"></div>
-                                    </div>
-                                    <span>${count}</span>
-                                </div>
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-star-fill me-2"></i>
+                            <span class="me-2">${star}</span>
+                            <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                <div class="progress-bar bg-warning" style="width: ${percentage}%"></div>
                             </div>
-                        `;
+                            <span>${count}</span>
+                        </div>
+                    </div>
+                `;
                         }
                         $('#rating-breakdown').html(ratingBreakdownHTML);
 
+                        // ✅ REVIEWS LIST
                         var reviewsHTML = '';
                         if (data.company.reviews && data.company.reviews.length > 0) {
                             data.company.reviews.forEach(function(review) {
@@ -711,17 +724,17 @@
                                 }
 
                                 reviewsHTML += `
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <h6 class="fw-bold mb-0">${review.candidate ?  review.candidate.name : 'Anonymous'}</h6>
-                                            <small class="text-muted">${reviewDate}</small>
-                                        </div>
-                                        <div class="mb-2">${starHTML}</div>
-                                        <p class="text-muted mb-0">${review.review_company || 'Tidak ada komentar'}</p>
-                                    </div>
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <h6 class="fw-bold mb-0">${review.candidate ? review.candidate.name : 'Anonymous'}</h6>
+                                    <small class="text-muted">${reviewDate}</small>
                                 </div>
-                            `;
+                                <div class="mb-2">${starHTML}</div>
+                                <p class="text-muted mb-0">${review.review_company || 'Tidak ada komentar'}</p>
+                            </div>
+                        </div>
+                    `;
                             });
                         } else {
                             reviewsHTML =
@@ -1494,10 +1507,10 @@
                         <div class="d-flex flex-wrap gap-2">
                             ${data.job.skills && data.job.skills.length > 0 
                                 ? data.job.skills.map(skill => `
-                                                                                                    <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-                                                                                                        <i class="bi bi-check-circle me-1"></i>${skill.name}
-                                                                                                    </span>
-                                                                                                `).join('') 
+                                                                                                            <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                                                                                                <i class="bi bi-check-circle me-1"></i>${skill.name}
+                                                                                                            </span>
+                                                                                                        `).join('') 
                                 : '<span class="text-muted">Tidak ada skill khusus yang dibutuhkan</span>'
                             }
                         </div>

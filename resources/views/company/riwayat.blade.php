@@ -1562,8 +1562,8 @@
                             </label>
                             <div class="star-rating" id="starRating">
                                 ${[1,2,3,4,5].map(star => `
-                                                                                                        <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
-                                                                                                    `).join('')}
+                                                                                                                <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
+                                                                                                            `).join('')}
                             </div>
                             <input type="hidden" id="ratingValue" value="0">
                         </div>
