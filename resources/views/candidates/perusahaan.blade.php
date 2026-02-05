@@ -316,7 +316,7 @@
                                     <div>
                                         <i class="bi bi-star-fill text-warning"></i>
                                         <span class="fw-bold">{{ number_format($company->avg_rating ?? 0, 1) }}</span>
-                                        <span class="text-muted ms-2">1 Ulasan</span>
+
                                     </div>
                                     <a href="#" class="text-decoration-underline"
                                         onclick="event.stopPropagation();">See detail</a>
@@ -651,7 +651,7 @@
                         $('#modal-company-rating').text(rating.toFixed(1));
                         $('#avg-rating-display').text(rating.toFixed(1));
 
-                        // ✅ FIX: TOTAL REVIEWS dari server yang sudah di-filter
+                        // ✅ FIX: TOTAL REVIEWS DARI SERVER (SUDAH DI-FILTER)
                         var totalReviews = data.total_reviews || 0;
                         $('#modal-company-reviews').text(totalReviews + ' Ulasan');
                         $('#total-ratings').text(totalReviews + ' ratings');
@@ -664,7 +664,7 @@
                         }
                         $('#star-rating-display').html(stars);
 
-                        // ✅ FIX: TOTAL JOBS yang Approved dan Open
+                        // ✅ FIX: TOTAL JOBS YANG APPROVED DAN OPEN
                         var openJobsCount = data.company.job_postings ?
                             data.company.job_postings.filter(job =>
                                 job.status === 'Open' && job.verification_status === 'Approved'
@@ -676,7 +676,7 @@
                         $('#company-description').text(data.company.description ||
                             'Deskripsi tidak tersedia');
 
-                        // ✅ RATING BREAKDOWN
+                        // ✅ RATING BREAKDOWN (DARI SERVER - SUDAH DI-FILTER)
                         var ratingBreakdownHTML = '';
                         var ratingStats = data.rating_stats || {
                             5: 0,
@@ -685,11 +685,19 @@
                             2: 0,
                             1: 0
                         };
+
+                        // ✅ HITUNG MAX COUNT UNTUK PROGRESS BAR
                         var maxCount = Math.max(...Object.values(ratingStats));
+
+                        // ✅ JIKA TIDAK ADA RATING SAMA SEKALI
+                        if (maxCount === 0) {
+                            maxCount = 1; // Prevent division by zero
+                        }
 
                         for (var star = 5; star >= 1; star--) {
                             var count = ratingStats[star] || 0;
                             var percentage = maxCount > 0 ? (count / maxCount * 100) : 0;
+
                             ratingBreakdownHTML += `
                     <div class="mb-2">
                         <div class="d-flex align-items-center">
@@ -705,10 +713,18 @@
                         }
                         $('#rating-breakdown').html(ratingBreakdownHTML);
 
-                        // ✅ REVIEWS LIST
+                        // ✅ REVIEWS LIST (DARI SERVER - SUDAH DI-FILTER)
                         var reviewsHTML = '';
+
+                        // ✅ CEK: Apakah ada reviews yang valid?
                         if (data.company.reviews && data.company.reviews.length > 0) {
                             data.company.reviews.forEach(function(review) {
+                                // ✅ SKIP REVIEW JIKA RATING = 0 (DOUBLE CHECK)
+                                if (!review.rating_company || review.rating_company === 0) {
+                                    console.warn('Skipping review with 0 rating:', review);
+                                    return; // Skip iteration
+                                }
+
                                 var reviewDate = review.updated_at ? new Date(review.updated_at)
                                     .toLocaleDateString('id-ID', {
                                         day: '2-digit',
@@ -736,11 +752,36 @@
                         </div>
                     `;
                             });
+
+                            // ✅ JIKA SETELAH FILTER TIDAK ADA REVIEW
+                            if (reviewsHTML === '') {
+                                reviewsHTML = `
+                        <div class="alert alert-light text-center">
+                            <i class="bi bi-chat-left-text text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2 mb-0">Belum ada ulasan untuk perusahaan ini</p>
+                        </div>
+                    `;
+                            }
                         } else {
-                            reviewsHTML =
-                                '<div class="alert alert-light text-center">Belum ada ulasan untuk perusahaan ini</div>';
+                            reviewsHTML = `
+                    <div class="alert alert-light text-center">
+                        <i class="bi bi-chat-left-text text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-2 mb-0">Belum ada ulasan untuk perusahaan ini</p>
+                    </div>
+                `;
                         }
+
                         $('#reviews-list').html(reviewsHTML);
+
+                        // ✅ LOG UNTUK DEBUG
+                        console.log('✅ Company Modal Data:', {
+                            company_name: data.company.name,
+                            total_reviews: totalReviews,
+                            avg_rating: rating,
+                            rating_breakdown: ratingStats,
+                            reviews_count: data.company.reviews ? data.company.reviews.length :
+                                0
+                        });
 
                         $('#companyDetailModal').modal('show');
                     },
@@ -1507,10 +1548,10 @@
                         <div class="d-flex flex-wrap gap-2">
                             ${data.job.skills && data.job.skills.length > 0 
                                 ? data.job.skills.map(skill => `
-                                                                                                            <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-                                                                                                                <i class="bi bi-check-circle me-1"></i>${skill.name}
-                                                                                                            </span>
-                                                                                                        `).join('') 
+                                                                                                                        <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                                                                                                            <i class="bi bi-check-circle me-1"></i>${skill.name}
+                                                                                                                        </span>
+                                                                                                                    `).join('') 
                                 : '<span class="text-muted">Tidak ada skill khusus yang dibutuhkan</span>'
                             }
                         </div>

@@ -32,12 +32,15 @@
                 </div>
                 <div class="col-md-4 text-md-end mt-md-0 mt-3">
                     <div class="d-flex justify-content-md-end gap-2 flex-wrap">
-                        <span class="badge bg-primary px-3 py-2">
-                            <i class="bi bi-file-earmark-text me-1"></i>{{ $reports->count() }} Reports
+                        <span class="badge bg-danger px-3 py-2">
+                            <i class="bi bi-flag-fill me-1"></i>{{ $myReports->count() ?? 0 }} Reports
                         </span>
                         <span class="badge bg-warning px-3 py-2">
                             <i class="bi bi-star me-1"></i>{{ $feedbackApplicationsGivenByCandidate->count() }} Feedback
                             Saya
+                        </span>
+                        <span class="badge bg-success px-3 py-2">
+                            <i class="bi bi-envelope-heart me-1"></i>{{ $totalInvitations ?? 0 }} Undangan
                         </span>
                         <span class="badge bg-info px-3 py-2">
                             <i class="bi bi-briefcase me-1"></i>{{ $applications->count() }} Lamaran
@@ -64,6 +67,12 @@
                             value="applications" checked autocomplete="off">
                         <label class="btn btn-outline-primary" for="filterApplications">
                             <i class="bi bi-briefcase me-1"></i>Lamaran
+                        </label>
+
+                        <input type="radio" class="btn-check" name="historyFilter" id="filterInvitations"
+                            value="invitations" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="filterInvitations">
+                            <i class="bi bi-envelope-heart me-1"></i>Undangan
                         </label>
 
                         <input type="radio" class="btn-check" name="historyFilter" id="filterMyFeedback"
@@ -214,7 +223,7 @@
                                                             </button>
                                                         @endif
 
-                                                        @if (in_array($application->status, ['Pending', 'Selection', 'invited', 'Accepted']))
+                                                        @if (in_array($application->status, ['Applied', 'Reviewed', 'invited', 'Accepted', 'Interview', 'Pending']))
                                                             <button type="button"
                                                                 class="btn btn-outline-danger btn-sm w-100 withdraw-btn mb-2"
                                                                 data-application-id="{{ $application->id }}"
@@ -222,9 +231,11 @@
                                                                 data-job-title="{{ $application->jobPosting->title ?? 'Job' }}"
                                                                 data-current-status="{{ $application->status }}">
                                                                 <i class="bi bi-x-circle me-1"></i>
-                                                                Tarik Lamaran (-5 Poin)
                                                                 @if ($application->status === 'Accepted')
+                                                                    Tarik Lamaran (-5 Poin)
                                                                     <small class="d-block">(Slot akan dikembalikan)</small>
+                                                                @else
+                                                                    Tarik Lamaran
                                                                 @endif
                                                             </button>
                                                         @endif
@@ -322,8 +333,217 @@
                         </div>
                     @endif
                 </div>
+                <!-- ✅ ADD THIS SECTION - INVITATIONS (Company Invitations) -->
+                <div class="history-section" id="invitations-section" style="display: none;">
+                    @if ($invitations->count() > 0)
+                        <div class="mb-4">
+                            <h4 class="fw-bold mb-3">
+                                <i class="bi bi-envelope-heart text-warning me-2"></i>Undangan dari Perusahaan
+                            </h4>
+                            <div class="row g-3">
+                                @foreach ($invitations as $invitation)
+                                    <div class="col-lg-6">
+                                        <div
+                                            class="card history-card rounded-3 h-100 border {{ $invitation->status === 'invited' ? 'border-warning border-2' : '' }}">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex align-items-center mb-2">
+                                                            @if ($invitation->status === 'invited')
+                                                                <span class="badge bg-warning text-dark me-2">
+                                                                    <i class="bi bi-envelope-heart me-1"></i>BARU!
+                                                                </span>
+                                                            @endif
+                                                            <h5 class="fw-bold mb-0">
+                                                                {{ $invitation->jobPosting->title ?? 'Job Title' }}
+                                                            </h5>
+                                                        </div>
+                                                        <p class="text-muted mb-1">
+                                                            <i class="bi bi-building me-1"></i>
+                                                            {{ $invitation->jobPosting->company->name ?? 'Company Name' }}
+                                                        </p>
+                                                        <p class="text-muted mb-0">
+                                                            <i class="bi bi-geo-alt me-1"></i>
+                                                            {{ $invitation->jobPosting->city->name ?? 'Location' }}
+                                                        </p>
+                                                    </div>
+                                                    <div class="ms-3">
+                                                        @php
+                                                            $statusColors = [
+                                                                'invited' => 'warning',
+                                                                'Accepted' => 'success',
+                                                                'Rejected' => 'danger',
+                                                                'Interview' => 'info',
+                                                            ];
+                                                            $color = $statusColors[$invitation->status] ?? 'secondary';
+                                                        @endphp
+                                                        <span class="badge bg-{{ $color }} px-3 py-2">
+                                                            {{ $invitation->status }}
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                <!-- MY FEEDBACK Section -->
+                                                @if ($invitation->status === 'invited')
+                                                    <div class="alert alert-warning mb-3">
+                                                        <i class="bi bi-envelope-heart me-1"></i>
+                                                        <strong>Anda Diundang!</strong>
+                                                        <p class="mb-0 mt-1 small">
+                                                            Perusahaan tertarik dengan profil Anda.
+                                                            @if ($invitation->jobPosting->has_interview == 1)
+                                                                Jika diterima, Anda akan masuk tahap wawancara.
+                                                            @else
+                                                                Terima undangan untuk langsung diterima!
+                                                            @endif
+                                                        </p>
+                                                    </div>
+                                                @endif
+
+                                                <div class="border-top pt-3">
+                                                    <div class="row g-2 mb-3">
+                                                        <div class="col-6">
+                                                            <small class="text-muted d-block">Diundang Pada</small>
+                                                            <small class="fw-bold">
+                                                                {{ $invitation->invited_at ? \Carbon\Carbon::parse($invitation->invited_at)->format('d M Y') : '-' }}
+                                                            </small>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <small class="text-muted d-block">Terakhir Update</small>
+                                                            <small
+                                                                class="fw-bold">{{ $invitation->updated_at->format('d M Y') }}</small>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mt-3">
+                                                        <!-- VIEW DETAIL BUTTON -->
+                                                        <button type="button"
+                                                            class="btn btn-outline-primary btn-sm w-100 mb-2 view-invitation-detail-btn"
+                                                            data-invitation-id="{{ $invitation->id }}"
+                                                            data-job-id="{{ $invitation->job_posting_id }}">
+                                                            <i class="bi bi-eye me-1"></i>
+                                                            Lihat Detail Lowongan
+                                                        </button>
+
+                                                        @if ($invitation->status === 'invited')
+                                                            <div class="row g-2">
+                                                                <div class="col-6">
+                                                                    <button type="button"
+                                                                        class="btn btn-success btn-sm w-100 accept-invitation-action-btn"
+                                                                        data-invitation-id="{{ $invitation->id }}"
+                                                                        data-company-name="{{ $invitation->jobPosting->company->name ?? 'Company' }}"
+                                                                        data-job-title="{{ $invitation->jobPosting->title ?? 'Job' }}"
+                                                                        data-has-interview="{{ $invitation->jobPosting->has_interview }}">
+                                                                        <i class="bi bi-check-circle me-1"></i>
+                                                                        Terima
+                                                                    </button>
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <button type="button"
+                                                                        class="btn btn-danger btn-sm w-100 reject-invitation-btn"
+                                                                        data-invitation-id="{{ $invitation->id }}"
+                                                                        data-company-name="{{ $invitation->jobPosting->company->name ?? 'Company' }}"
+                                                                        data-job-title="{{ $invitation->jobPosting->title ?? 'Job' }}">
+                                                                        <i class="bi bi-x-circle me-1"></i>
+                                                                        Tolak
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        @elseif ($invitation->status === 'Accepted')
+                                                            <div class="alert alert-success py-2 mb-0">
+                                                                <i class="bi bi-check-circle-fill me-1"></i>
+                                                                <small>Anda telah menerima undangan ini</small>
+                                                            </div>
+                                                        @elseif ($invitation->status === 'Rejected')
+                                                            <div class="alert alert-danger py-2 mb-0">
+                                                                <i class="bi bi-x-circle-fill me-1"></i>
+                                                                <small>Anda telah menolak undangan ini</small>
+                                                                @if ($invitation->reject_reason)
+                                                                    <p class="mb-0 mt-1 small fst-italic">
+                                                                        "{{ Str::limit($invitation->reject_reason, 100) }}"
+                                                                    </p>
+                                                                @endif
+                                                            </div>
+                                                        @elseif ($invitation->status === 'Interview')
+                                                            <div class="alert alert-info py-2 mb-0">
+                                                                <i class="bi bi-calendar-check me-1"></i>
+                                                                <small>Menunggu jadwal wawancara dari perusahaan</small>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <div class="d-flex justify-content-center mt-4">
+                                {{ $invitations->links() }}
+                            </div>
+                        </div>
+                    @else
+                        <div class="py-5 text-center">
+                            <i class="bi bi-envelope-open text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="fw-bold mb-2 mt-3">Belum Ada Undangan</h5>
+                            <p class="text-muted">Anda belum menerima undangan dari perusahaan manapun</p>
+                            <a href="{{ route('jobs.index') }}" class="btn btn-primary">
+                                <i class="bi bi-search me-2"></i>Cari Lowongan
+                            </a>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- ✅ ADD THIS MODAL - Reject Invitation Modal --}}
+                <div class="modal fade" id="rejectInvitationModal" tabindex="-1"
+                    aria-labelledby="rejectInvitationModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header border-0 bg-danger bg-opacity-10">
+                                <h5 class="modal-title fw-bold text-danger" id="rejectInvitationModalLabel">
+                                    <i class="bi bi-x-circle me-2"></i>Tolak Undangan
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-warning py-2 mb-3">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <small>Anda akan menolak undangan dari perusahaan ini.</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Perusahaan:</label>
+                                    <p class="mb-0 fw-bold text-primary" id="reject-invitation-company-name"></p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Posisi:</label>
+                                    <p class="mb-0" id="reject-invitation-job-title"></p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="reject-invitation-reason" class="form-label fw-bold">
+                                        Alasan Menolak (Opsional)
+                                    </label>
+                                    <textarea class="form-control" id="reject-invitation-reason" rows="4"
+                                        placeholder="Jelaskan alasan Anda menolak undangan ini..." maxlength="500"></textarea>
+                                    <div class="d-flex justify-content-end mt-1">
+                                        <small class="text-muted"><span
+                                                id="reject-invitation-char-count">0</span>/500</small>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" id="reject-invitation-id">
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-arrow-left me-1"></i>Batal
+                                </button>
+                                <button type="button" class="btn btn-danger" id="submit-reject-invitation-btn">
+                                    <i class="bi bi-x-circle me-1"></i>Ya, Tolak Undangan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- MY FEEDBACK Section -->
                 <div class="history-section" id="my-feedback-section" style="display: none;">
                     @if ($feedbackApplicationsGivenByCandidate->count() > 0)
                         <div class="mb-4">
@@ -426,153 +646,203 @@
 
                 <!-- Reports History -->
                 <div class="history-section" id="reports-section" style="display: none;">
-                    @if ($reports->count() > 0)
+                    @if (isset($myReports) && $myReports->count() > 0)
                         <div class="mb-4">
                             <h4 class="fw-bold mb-3">
-                                <i class="bi bi-clipboard-data text-primary me-2"></i>Laporan Lengkap dari Perusahaan
+                                <i class="bi bi-flag-fill text-danger me-2"></i>Laporan yang Saya Kirim
                             </h4>
                             <div class="row g-3">
-                                @foreach ($reports as $report)
+                                @foreach ($myReports as $report)
+                                    @php
+                                        $application = $report->application;
+                                        $job = $application->jobPosting ?? null;
+                                    @endphp
+
                                     <div class="col-lg-6">
-                                        <div class="card history-card rounded-3 h-100 border">
+                                        <div class="card history-card rounded-3 h-100 border border-danger">
                                             <div class="card-body p-4">
+                                                {{-- Header Card --}}
                                                 <div class="d-flex align-items-start mb-3">
-                                                    <div class="bg-primary rounded-circle me-3 bg-opacity-10 p-3">
-                                                        <i class="bi bi-clipboard-check text-primary fs-4"></i>
+                                                    <div class="bg-danger rounded-circle me-3 bg-opacity-10 p-3">
+                                                        <i class="bi bi-flag-fill text-danger fs-4"></i>
                                                     </div>
                                                     <div class="flex-grow-1">
-                                                        <h6 class="fw-bold mb-1">
-                                                            {{ $report->jobPosting->title ?? 'Job Title' }}
-                                                        </h6>
-                                                        <p class="text-muted small mb-0">
-                                                            <i
-                                                                class="bi bi-building me-1"></i>{{ $report->jobPosting->company->name ?? 'Company' }}
-                                                        </p>
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <div>
+                                                                <h6 class="fw-bold mb-1">{{ $job->title ?? 'Job Title' }}
+                                                                </h6>
+                                                                <p class="text-muted small mb-0">
+                                                                    <i
+                                                                        class="bi bi-building me-1"></i>{{ $job->company->name ?? 'Company' }}
+                                                                </p>
+                                                            </div>
+                                                            @php
+                                                                $statusColors = [
+                                                                    'pending' => 'warning',
+                                                                    'approved' => 'success',
+                                                                    'rejected' => 'danger',
+                                                                ];
+                                                                $statusColor =
+                                                                    $statusColors[$report->status] ?? 'secondary';
+                                                            @endphp
+                                                            <span class="badge bg-{{ $statusColor }}">
+                                                                {{ ucfirst($report->status) }}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <small class="text-muted">
-                                                        {{ $report->updated_at->diffForHumans() }}
-                                                    </small>
                                                 </div>
 
-                                                @if ($report->rating_candidates)
-                                                    <div class="mb-3 bg-light rounded p-3">
-                                                        <div class="d-flex align-items-center justify-content-between">
-                                                            <span class="text-muted small">
-                                                                <i class="bi bi-star me-1"></i>Rating:
-                                                            </span>
-                                                            <div class="text-warning">
-                                                                @for ($i = 1; $i <= 5; $i++)
-                                                                    <i
-                                                                        class="bi bi-star-fill{{ $i <= $report->rating_candidates ? '' : '-outline' }}"></i>
-                                                                @endfor
-                                                                <span
-                                                                    class="text-dark ms-1 fw-bold">({{ $report->rating_candidates }}/5)</span>
+                                                {{-- Alasan Laporan --}}
+                                                <div class="mb-3 bg-light rounded p-3 border-start border-danger border-4">
+                                                    <small class="text-muted d-block mb-2">
+                                                        <i class="bi bi-chat-square-quote-fill text-danger me-1"></i>
+                                                        <strong>Alasan Laporan:</strong>
+                                                    </small>
+                                                    <p class="small mb-0 fst-italic">"{{ $report->reason }}"</p>
+                                                </div>
+
+                                                {{-- Rating & Review dari Perusahaan --}}
+                                                @if ($application->rating_candidates || $application->review_candidate)
+                                                    <div class="border-top pt-3 mb-3">
+                                                        <h6 class="fw-bold mb-2 text-primary">
+                                                            <i class="bi bi-star-fill me-1"></i>Rating & Review dari
+                                                            Perusahaan
+                                                        </h6>
+
+                                                        @if ($application->rating_candidates)
+                                                            <div class="mb-2">
+                                                                <div class="d-flex align-items-center">
+                                                                    <span class="text-muted small me-2">Rating:</span>
+                                                                    <div class="text-warning">
+                                                                        @for ($i = 1; $i <= 5; $i++)
+                                                                            <i
+                                                                                class="bi bi-star-fill{{ $i <= $application->rating_candidates ? '' : '-outline' }}"></i>
+                                                                        @endfor
+                                                                        <span
+                                                                            class="text-dark ms-1 fw-bold">({{ $application->rating_candidates }}/5)</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if ($application->review_candidate)
+                                                            <div class="bg-light rounded p-2">
+                                                                <small class="text-muted d-block mb-1">
+                                                                    <i class="bi bi-chat-quote me-1"></i>Review:
+                                                                </small>
+                                                                <p class="small mb-0">
+                                                                    "{{ $application->review_candidate }}"</p>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endif
+
+                                                {{-- Info Lowongan yang Dilaporkan --}}
+                                                @if ($job)
+                                                    <div class="border-top pt-3">
+                                                        <h6 class="fw-bold mb-3">
+                                                            <i class="bi bi-briefcase me-1"></i>Detail Lowongan
+                                                        </h6>
+
+                                                        {{-- ✅ TAMBAHKAN: Company Name & Industry --}}
+                                                        <div class="mb-3">
+                                                            <div class="d-flex align-items-start mb-2">
+                                                                <i class="bi bi-building-fill text-primary me-2 mt-1"></i>
+                                                                <div>
+                                                                    <small class="text-muted d-block">Perusahaan:</small>
+                                                                    <p class="fw-bold mb-0">
+                                                                        {{ $job->company->name ?? 'N/A' }}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div class="d-flex align-items-start">
+                                                                <i class="bi bi-layers-fill text-success me-2 mt-1"></i>
+                                                                <div>
+                                                                    <small class="text-muted d-block">Industri:</small>
+                                                                    <p class="fw-bold mb-0">
+                                                                        {{ $job->industry->name ?? 'N/A' }}</p>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                @endif
 
-                                                @if ($report->review_candidate)
-                                                    <div
-                                                        class="mb-3 bg-light rounded p-3 border-start border-primary border-4">
-                                                        <small class="text-muted d-block mb-2">
-                                                            <i class="bi bi-chat-square-quote-fill text-primary me-1"></i>
-                                                            <strong>Review:</strong>
-                                                        </small>
-                                                        <p class="small mb-0 fst-italic">"{{ $report->review_candidate }}"
-                                                        </p>
-                                                    </div>
-                                                @endif
-
-                                                @if ($report->feedbackApplications && $report->feedbackApplications->count() > 0)
-                                                    <div class="mb-3">
-                                                        <small class="text-muted d-block mb-2">
-                                                            <i class="bi bi-tags-fill me-1"></i>Feedback Tags:
-                                                        </small>
-                                                        <div class="d-flex flex-wrap gap-2">
-                                                            @foreach ($report->feedbackApplications as $feedbackApp)
-                                                                @if ($feedbackApp->feedback)
-                                                                    <span class="badge bg-success">
-                                                                        <i
-                                                                            class="bi bi-tag-fill me-1"></i>{{ $feedbackApp->feedback->name }}
-                                                                    </span>
-                                                                @endif
-                                                            @endforeach
+                                                        {{-- Badges Type & Industry (Opsional - bisa dihapus karena sudah ada di atas) --}}
+                                                        <div class="mb-2">
+                                                            <span
+                                                                class="badge bg-light text-dark me-1">{{ $job->typeJobs->name ?? 'N/A' }}</span>
                                                         </div>
+
+                                                        {{-- Lokasi --}}
+                                                        <p class="text-muted small mb-2">
+                                                            <i
+                                                                class="bi bi-geo-alt me-1"></i>{{ $job->city->name ?? 'N/A' }}
+                                                        </p>
+
+                                                        {{-- Gaji --}}
+                                                        <div class="mb-2">
+                                                            <h5 class="fw-bold mb-1" style="color: var(--primary-blue);">
+                                                                Rp {{ number_format($job->salary, 0, ',', '.') }}
+                                                            </h5>
+                                                            <span class="badge bg-primary" style="font-size: 0.7rem;">
+                                                                <i class="bi bi-calendar-check me-1"></i>
+                                                                {{ $job->type_salary == 'total' ? 'Total' : 'Per Hari' }}
+                                                            </span>
+                                                        </div>
+
+                                                        {{-- Jadwal Kerja --}}
+                                                        @if ($job->jobDatess && $job->jobDatess->count() > 0)
+                                                            <div class="mb-2">
+                                                                <small class="text-muted d-block mb-1 fw-bold">
+                                                                    <i class="bi bi-calendar-event me-1"></i>Jadwal Kerja:
+                                                                </small>
+                                                                @foreach ($job->jobDatess->take(2) as $jobDate)
+                                                                    <small class="text-muted d-block ms-3">
+                                                                        <i class="bi bi-dot"></i>
+                                                                        {{ \Carbon\Carbon::parse($jobDate->date)->format('d M Y') }}
+                                                                        @if ($jobDate->day)
+                                                                            <span class="badge bg-info text-white ms-1"
+                                                                                style="font-size: 0.6rem;">
+                                                                                {{ $jobDate->day->name }}
+                                                                            </span>
+                                                                        @endif
+                                                                        @if ($jobDate->start_time && $jobDate->end_time)
+                                                                            <span class="ms-1">
+                                                                                <i class="bi bi-clock me-1"></i>
+                                                                                {{ \Carbon\Carbon::parse($jobDate->start_time)->format('H:i') }}
+                                                                                -
+                                                                                {{ \Carbon\Carbon::parse($jobDate->end_time)->format('H:i') }}
+                                                                            </span>
+                                                                        @endif
+                                                                    </small>
+                                                                @endforeach
+                                                                @if ($job->jobDatess->count() > 2)
+                                                                    <small class="text-muted d-block ms-3 mt-1">
+                                                                        <span class="badge bg-secondary"
+                                                                            style="font-size: 0.6rem;">
+                                                                            +{{ $job->jobDatess->count() - 2 }} jadwal
+                                                                            lainnya
+                                                                        </span>
+                                                                    </small>
+                                                                @endif
+                                                            </div>
+                                                        @endif
+
+                                                        {{-- Slot --}}
+                                                        <small class="text-muted d-block">
+                                                            <i class="bi bi-people-fill me-1"></i>Slot:
+                                                            {{ $job->slot }}
+                                                        </small>
                                                     </div>
                                                 @endif
 
-                                                <div
-                                                    class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                {{-- Footer --}}
+                                                <div class="border-top pt-3 mt-3">
+                                                    <div class="d-flex justify-content-between align-items-center">
                                                         <small class="text-muted">
-                                                            <i
-                                                                class="bi bi-calendar3 me-1"></i>{{ $report->updated_at->translatedFormat('d F Y, H:i') }}
+                                                            <i class="bi bi-calendar3 me-1"></i>Dilaporkan:
+                                                            {{ $report->created_at->format('d M Y, H:i') }}
                                                         </small>
-                                                        @php
-                                                            $statusColors = [
-                                                                'pending' => 'secondary',
-                                                                'withdraw' => 'warning',
-                                                                'cancel' => 'danger',
-                                                                'selection' => 'info',
-                                                                'finish' => 'success',
-                                                                'Applied' => 'secondary',
-                                                                'Reviewed' => 'info',
-                                                                'Interview' => 'warning',
-                                                                'Accepted' => 'success',
-                                                                'Rejected' => 'danger',
-                                                            ];
-                                                            $color =
-                                                                $statusColors[strtolower($report->status)] ??
-                                                                ($statusColors[$report->status] ?? 'secondary');
-
-                                                            $companyUserId =
-                                                                $report->jobPosting->company->user_id ?? null;
-                                                            $blacklistRecord = $companyUserId
-                                                                ? \App\Models\Blacklist::where('user_id', Auth::id())
-                                                                    ->where('blocked_user_id', $companyUserId)
-                                                                    ->first()
-                                                                : null;
-                                                            $isBlocked = $blacklistRecord !== null;
-                                                        @endphp
-                                                        <span
-                                                            class="badge bg-{{ $color }}">{{ ucfirst($report->status) }}</span>
-                                                    </div>
-
-                                                    <div class="d-flex gap-2">
-                                                        @if (in_array($report->id, $reportedApplicationIds ?? []))
-                                                            <button class="btn btn-success btn-sm" disabled
-                                                                title="Laporan Anda sudah diterima">
-                                                                <i class="bi bi-check-circle me-1"></i>Sudah Dilaporkan
-                                                            </button>
-                                                        @else
-                                                            <button
-                                                                class="btn btn-outline-danger btn-sm report-company-btn"
-                                                                data-application-id="{{ $report->id }}"
-                                                                data-company-name="{{ $report->jobPosting->company->name ?? 'Company' }}"
-                                                                data-job-title="{{ $report->jobPosting->title ?? 'Job Title' }}"
-                                                                title="Laporkan review tidak sesuai">
-                                                                <i class="bi bi-flag me-1"></i>Report
-                                                            </button>
-                                                        @endif
-
-                                                        @if ($isBlocked)
-                                                            <button class="btn btn-dark btn-sm unblock-company-btn"
-                                                                data-blacklist-id="{{ $blacklistRecord->id }}"
-                                                                data-company-id="{{ $companyUserId }}"
-                                                                data-company-name="{{ $report->jobPosting->company->name ?? 'Company' }}"
-                                                                title="Klik untuk membuka blokir">
-                                                                <i class="bi bi-shield-check me-1"></i>Sudah Diblokir
-                                                            </button>
-                                                        @else
-                                                            <button class="btn btn-outline-dark btn-sm block-company-btn"
-                                                                data-company-id="{{ $companyUserId }}"
-                                                                data-company-name="{{ $report->jobPosting->company->name ?? 'Company' }}"
-                                                                data-job-title="{{ $report->jobPosting->title ?? 'Job Title' }}"
-                                                                title="Blokir perusahaan ini">
-                                                                <i class="bi bi-shield-x me-1"></i>Block
-                                                            </button>
-                                                        @endif
+                                                        <small class="text-muted">
+                                                            ID: #{{ $report->id }}
+                                                        </small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -582,23 +852,14 @@
                             </div>
 
                             <div class="d-flex justify-content-center mt-4">
-                                {{ $reports->appends(['status' => request('status')])->links() }}
+                                {{ $myReports->links() }}
                             </div>
                         </div>
                     @else
                         <div class="py-5 text-center">
-                            <i class="bi bi-clipboard-x text-muted" style="font-size: 4rem;"></i>
+                            <i class="bi bi-flag text-muted" style="font-size: 4rem;"></i>
                             <h5 class="fw-bold mb-2 mt-3">Belum Ada Laporan</h5>
-                            <p class="text-muted">Belum ada rating, review, atau feedback dari perusahaan</p>
-                            @if (request('status'))
-                                <p class="text-muted small">Filter status:
-                                    <strong>{{ ucfirst(request('status')) }}</strong>
-                                </p>
-                                <button class="btn btn-primary btn-sm"
-                                    onclick="window.location.href='{{ route('history.index') }}'">
-                                    <i class="bi bi-arrow-clockwise me-1"></i>Tampilkan Semua
-                                </button>
-                            @endif
+                            <p class="text-muted">Anda belum pernah melaporkan perusahaan apapun</p>
                         </div>
                     @endif
                 </div>
@@ -750,10 +1011,20 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-warning py-2 mb-3">
+                    {{-- ✅ UBAH: Alert dinamis berdasarkan status --}}
+                    <div class="alert alert-warning py-2 mb-3" id="withdraw-penalty-alert">
                         <i class="bi bi-info-circle me-1"></i>
-                        <small><strong>Perhatian:</strong> Menarik lamaran akan mengurangi poin Anda sebanyak <strong>5
-                                poin</strong>.</small>
+                        <small id="withdraw-penalty-text">
+                            <strong>Perhatian:</strong> Menarik lamaran akan mengurangi poin Anda sebanyak <strong>5
+                                poin</strong>.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status Saat Ini:</label>
+                        <p class="mb-0" id="withdraw-current-status-display">
+                            <span class="badge bg-secondary" id="withdraw-status-badge">-</span>
+                        </p>
                     </div>
 
                     <div class="mb-3">
@@ -927,6 +1198,8 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOM loaded - History page initialized');
+
             // ===== HELPER FUNCTIONS =====
             function formatNumber(num) {
                 return new Intl.NumberFormat('id-ID').format(num || 0);
@@ -943,164 +1216,210 @@
 
             // ===== TAB FILTER =====
             const savedTab = localStorage.getItem('activeHistoryTab') || 'applications';
+            console.log('💾 Saved tab:', savedTab);
 
-            document.querySelector(`input[name="historyFilter"][value="${savedTab}"]`).checked = true;
+            // Set radio button
+            const activeRadio = document.querySelector(`input[name="historyFilter"][value="${savedTab}"]`);
+            if (activeRadio) {
+                activeRadio.checked = true;
+            }
 
+            // Show/hide sections
             document.querySelectorAll('.history-section').forEach(section => {
                 section.style.display = 'none';
             });
-            document.getElementById(`${savedTab}-section`).style.display = 'block';
 
-            // Show/Hide Status Filter based on active tab
-            if (savedTab === 'applications') {
-                document.getElementById('status-filter-container').style.display = 'block';
-            } else {
-                document.getElementById('status-filter-container').style.display = 'none';
+            const activeSection = document.getElementById(`${savedTab}-section`);
+            if (activeSection) {
+                activeSection.style.display = 'block';
             }
 
+            // Show/Hide Status Filter
+            const statusFilterContainer = document.getElementById('status-filter-container');
+            if (statusFilterContainer) {
+                statusFilterContainer.style.display = savedTab === 'applications' ? 'block' : 'none';
+            }
+
+            // Tab change event
             document.querySelectorAll('input[name="historyFilter"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const filterType = this.value;
+                    console.log('🔄 Tab changed to:', filterType);
+
                     localStorage.setItem('activeHistoryTab', filterType);
 
                     document.querySelectorAll('.history-section').forEach(section => {
                         section.style.display = 'none';
                     });
-                    document.getElementById(`${filterType}-section`).style.display = 'block';
+
+                    const targetSection = document.getElementById(`${filterType}-section`);
+                    if (targetSection) {
+                        targetSection.style.display = 'block';
+                    }
 
                     // Show/Hide Status Filter
-                    if (filterType === 'applications') {
-                        document.getElementById('status-filter-container').style.display = 'block';
-                    } else {
-                        document.getElementById('status-filter-container').style.display = 'none';
+                    if (statusFilterContainer) {
+                        statusFilterContainer.style.display = filterType === 'applications' ?
+                            'block' : 'none';
                     }
                 });
             });
 
             // ===== STATUS FILTER =====
-            document.getElementById('statusFilter').addEventListener('change', function() {
-                const status = this.value;
-                const currentUrl = new URL(window.location.href);
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', function() {
+                    const status = this.value;
+                    const currentUrl = new URL(window.location.href);
 
-                if (status) {
-                    currentUrl.searchParams.set('status', status);
-                } else {
-                    currentUrl.searchParams.delete('status');
-                }
+                    if (status) {
+                        currentUrl.searchParams.set('status', status);
+                    } else {
+                        currentUrl.searchParams.delete('status');
+                    }
 
-                currentUrl.searchParams.delete('apps_page');
-                currentUrl.searchParams.delete('reports_page');
-                currentUrl.searchParams.delete('myfeedback_page');
+                    currentUrl.searchParams.delete('apps_page');
+                    currentUrl.searchParams.delete('reports_page');
+                    currentUrl.searchParams.delete('myfeedback_page');
 
-                window.location.href = currentUrl.toString();
-            });
+                    window.location.href = currentUrl.toString();
+                });
+            }
 
             // ===== CHARACTER COUNTER =====
-            document.getElementById('report-reason').addEventListener('input', function() {
-                const length = this.value.length;
-                const counter = document.getElementById('char-count');
-                counter.textContent = length;
+            const reportReason = document.getElementById('report-reason');
+            if (reportReason) {
+                reportReason.addEventListener('input', function() {
+                    const length = this.value.length;
+                    const counter = document.getElementById('char-count');
+                    if (counter) {
+                        counter.textContent = length;
 
-                if (length < 10) {
-                    counter.style.color = '#dc3545';
-                } else if (length < 50) {
-                    counter.style.color = '#ffc107';
-                } else {
-                    counter.style.color = '#28a745';
-                }
-            });
+                        if (length < 10) {
+                            counter.style.color = '#dc3545';
+                        } else if (length < 50) {
+                            counter.style.color = '#ffc107';
+                        } else {
+                            counter.style.color = '#28a745';
+                        }
+                    }
+                });
+            }
 
-            document.getElementById('withdraw-reason').addEventListener('input', function() {
-                document.getElementById('withdraw-char-count').textContent = this.value.length;
-            });
+            const withdrawReason = document.getElementById('withdraw-reason');
+            if (withdrawReason) {
+                withdrawReason.addEventListener('input', function() {
+                    const counter = document.getElementById('withdraw-char-count');
+                    if (counter) {
+                        counter.textContent = this.value.length;
+                    }
+                });
+            }
+
+            const rejectReason = document.getElementById('reject-invitation-reason');
+            if (rejectReason) {
+                rejectReason.addEventListener('input', function() {
+                    const counter = document.getElementById('reject-invitation-char-count');
+                    if (counter) {
+                        counter.textContent = this.value.length;
+                    }
+                });
+            }
 
             // ===== VIEW DETAIL LAMARAN =====
             document.querySelectorAll('.view-detail-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const jobId = this.dataset.jobId;
+                    console.log('👁️ View detail clicked, job ID:', jobId);
+                    loadJobModal(jobId);
+                });
+            });
+
+            // ===== VIEW INVITATION DETAIL =====
+            document.querySelectorAll('.view-invitation-detail-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const jobId = this.dataset.jobId;
+                    console.log('👁️ View invitation detail clicked, job ID:', jobId);
                     loadJobModal(jobId);
                 });
             });
 
             // ===== LOAD JOB MODAL =====
             function loadJobModal(jobId) {
+                console.log('📡 Loading job modal for ID:', jobId);
+
                 $.ajax({
                     url: '/jobs/' + jobId,
                     method: 'GET',
                     success: function(data) {
+                        console.log('✅ Job data loaded:', data);
                         const job = data.job;
 
                         $('#job-title').text(job.title);
                         $('#company-name').text(job.company.name);
                         $('#updated-at').text(formatDate(job.updated_at));
                         $('#job-type-industry').html(`
-                            <span class="badge bg-light text-dark me-2">${job.type_jobs?.name || 'N/A'}</span>
-                            <span class="badge bg-light text-dark">${job.industry?.name || 'N/A'}</span>
-                        `);
+                        <span class="badge bg-light text-dark me-2">${job.type_jobs?.name || 'N/A'}</span>
+                        <span class="badge bg-light text-dark">${job.industry?.name || 'N/A'}</span>
+                    `);
                         $('#job-location').html(
                             `<i class="bi bi-geo-alt me-2"></i>${job.city?.name || 'N/A'}`);
 
-                        // SALARY + CLOSE DATE + JADWAL KERJA
                         let salaryHTML = `
-                            <div>
-                                <h4 class="fw-bold mb-1" style="color: var(--primary-blue);">
-                                    Rp ${formatNumber(job.salary)}
-                                </h4>
-                                <div class="mb-2">
-                                    <span class="badge bg-primary" style="font-size: 0.75rem;">
-                                        <i class="bi bi-calendar-check me-1"></i>
-                                        ${job.type_salary === 'total' ? 'Total' : 'Per Hari'}
-                                    </span>
-                                </div>
-                                <small class="text-muted d-block mb-2">
-                                    <i class="bi bi-people-fill me-1"></i>Slot: ${job.slot}
-                                </small>
-                        `;
+                        <div>
+                            <h4 class="fw-bold mb-1" style="color: var(--primary-blue);">
+                                Rp ${formatNumber(job.salary)}
+                            </h4>
+                            <div class="mb-2">
+                                <span class="badge bg-primary" style="font-size: 0.75rem;">
+                                    <i class="bi bi-calendar-check me-1"></i>
+                                    ${job.type_salary === 'total' ? 'Total' : 'Per Hari'}
+                                </span>
+                            </div>
+                    `;
 
-                        // CLOSE RECRUITMENT
                         if (job.close_recruitment) {
                             const closeDate = new Date(job.close_recruitment);
                             const now = new Date();
                             const daysLeft = Math.ceil((closeDate - now) / (1000 * 60 * 60 * 24));
 
                             salaryHTML += `
-                                <small class="text-muted d-block mb-2">
-                                    <i class="bi bi-calendar-x me-1"></i>
-                                    <strong>Tutup:</strong>
-                                    <span class="${daysLeft <= 3 && daysLeft >= 0 ? 'text-danger fw-bold' : ''}">
-                                        ${formatDate(job.close_recruitment)}
-                                        ${daysLeft > 0 ? `(${daysLeft} hari lagi)` : daysLeft === 0 ? '<span class="badge bg-warning text-dark">Hari Terakhir!</span>' : '<span class="badge bg-danger">Sudah Ditutup</span>'}
-                                    </span>
-                                </small>
-                            `;
+                            <small class="text-muted d-block mb-2">
+                                <i class="bi bi-calendar-x me-1"></i>
+                                <strong>Tutup:</strong>
+                                <span class="${daysLeft <= 3 && daysLeft >= 0 ? 'text-danger fw-bold' : ''}">
+                                    ${formatDate(job.close_recruitment)}
+                                    ${daysLeft > 0 ? `(${daysLeft} hari lagi)` : daysLeft === 0 ? '<span class="badge bg-warning text-dark">Hari Terakhir!</span>' : '<span class="badge bg-danger">Sudah Ditutup</span>'}
+                                </span>
+                            </small>
+                        `;
                         } else {
                             salaryHTML += `
-                                <small class="text-muted d-block mb-2">
-                                    <i class="bi bi-calendar-x me-1"></i>
-                                    <strong>Tutup:</strong> Belum ditentukan
-                                </small>
-                            `;
+                            <small class="text-muted d-block mb-2">
+                                <i class="bi bi-calendar-x me-1"></i>
+                                <strong>Tutup:</strong> Belum ditentukan
+                            </small>
+                        `;
                         }
 
-                        // JADWAL KERJA
                         salaryHTML += `
-                            <div class="mb-2">
-                                <small class="text-muted d-block mb-1">
-                                    <i class="bi bi-calendar-event me-1"></i>
-                                    <strong>Jadwal Kerja:</strong>
-                                </small>
-                        `;
+                        <div class="mb-2">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-calendar-event me-1"></i>
+                                <strong>Jadwal Kerja:</strong>
+                            </small>
+                    `;
 
                         if (job.jobDatess && job.jobDatess.length > 0) {
                             job.jobDatess.forEach(function(jobDate) {
                                 salaryHTML += `
-                                    <small class="text-muted d-block ms-3">
-                                        <i class="bi bi-dot"></i>
-                                        ${formatDate(jobDate.date)}
-                                        ${jobDate.day ? `<span class="badge bg-info text-white ms-1" style="font-size: 0.65rem;">${jobDate.day.name}</span>` : ''}
-                                        ${jobDate.start_time && jobDate.end_time ? `<span class="ms-1"><i class="bi bi-clock me-1"></i>${jobDate.start_time.substring(0,5)} - ${jobDate.end_time.substring(0,5)}</span>` : ''}
-                                    </small>
-                                `;
+                                <small class="text-muted d-block ms-3">
+                                    <i class="bi bi-dot"></i>
+                                    ${formatDate(jobDate.date)}
+                                    ${jobDate.day ? `<span class="badge bg-info text-white ms-1" style="font-size: 0.65rem;">${jobDate.day.name}</span>` : ''}
+                                    ${jobDate.start_time && jobDate.end_time ? `<span class="ms-1"><i class="bi bi-clock me-1"></i>${jobDate.start_time.substring(0,5)} - ${jobDate.end_time.substring(0,5)}</span>` : ''}
+                                </small>
+                            `;
                             });
                         } else {
                             salaryHTML +=
@@ -1109,67 +1428,64 @@
 
                         salaryHTML += '</div></div>';
                         $('#salary-slot').html(salaryHTML);
-
                         $('#job-info-card').data('job-id', jobId);
 
-                        // Informasi Lowongan Tab
                         $('#informasi-lowongan-content').html(`
-                            <div class="card shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="fw-bold"><i class="bi bi-geo-alt-fill me-2"></i>Alamat</h5>
-                                    <p>${job.address || 'Tidak tersedia'}</p>
-                                </div>
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="fw-bold"><i class="bi bi-geo-alt-fill me-2"></i>Alamat</h5>
+                                <p>${job.address || 'Tidak tersedia'}</p>
                             </div>
-                            <div class="card shadow-sm mt-3">
-                                <div class="card-body">
-                                    <h5 class="fw-bold"><i class="bi bi-file-text-fill me-2"></i>Deskripsi</h5>
-                                    <div>${job.description || 'Tidak tersedia'}</div>
-                                </div>
+                        </div>
+                        <div class="card shadow-sm mt-3">
+                            <div class="card-body">
+                                <h5 class="fw-bold"><i class="bi bi-file-text-fill me-2"></i>Deskripsi</h5>
+                                <div>${job.description || 'Tidak tersedia'}</div>
                             </div>
-                        `);
+                        </div>
+                    `);
 
-                        // Kualifikasi Tab
                         $('#kualifikasi-content').html(`
-                            <div class="card shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="fw-bold mb-3">Persyaratan</h5>
-                                    <div class="row g-3">
-                                        <div class="col-md-6"><strong>Bahasa English:</strong> ${job.level_english || 'N/A'}</div>
-                                        <div class="col-md-6"><strong>Bahasa Mandarin:</strong> ${job.level_mandarin || 'N/A'}</div>
-                                        <div class="col-md-6"><strong>Usia:</strong> ${job.min_age || 'N/A'} - ${job.max_age || 'N/A'} tahun</div>
-                                        <div class="col-md-6"><strong>Tinggi:</strong> Min. ${job.min_height || 'N/A'} cm</div>
-                                        <div class="col-md-6"><strong>Gender:</strong> ${job.gender || 'Semua'}</div>
-                                    </div>
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="fw-bold mb-3">Persyaratan</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><strong>Bahasa English:</strong> ${job.level_english || 'N/A'}</div>
+                                    <div class="col-md-6"><strong>Bahasa Mandarin:</strong> ${job.level_mandarin || 'N/A'}</div>
+                                    <div class="col-md-6"><strong>Usia:</strong> ${job.min_age || 'N/A'} - ${job.max_age || 'N/A'} tahun</div>
+                                    <div class="col-md-6"><strong>Tinggi:</strong> Min. ${job.min_height || 'N/A'} cm</div>
+                                    <div class="col-md-6"><strong>Gender:</strong> ${job.gender || 'Semua'}</div>
                                 </div>
                             </div>
-                            <div class="card shadow-sm mt-3">
-                                <div class="card-body">
-                                    <h5 class="fw-bold mb-3">Skill yang Dibutuhkan</h5>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        ${job.skills && job.skills.length > 0 
-                                            ? job.skills.map(s => `<span class="badge bg-primary">${s.name}</span>`).join('') 
-                                            : '<span class="text-muted">Tidak ada</span>'}
-                                    </div>
+                        </div>
+                        <div class="card shadow-sm mt-3">
+                            <div class="card-body">
+                                <h5 class="fw-bold mb-3">Skill yang Dibutuhkan</h5>
+                                <div class="d-flex flex-wrap gap-2">
+                                    ${job.skills && job.skills.length > 0 
+                                        ? job.skills.map(s => `<span class="badge bg-primary">${s.name}</span>`).join('') 
+                                        : '<span class="text-muted">Tidak ada</span>'}
                                 </div>
                             </div>
-                        `);
+                        </div>
+                    `);
 
-                        // Benefit Tab
                         $('#benefit-content').html(job.benefits && job.benefits.length > 0 ?
                             job.benefits.map(b => `
-                                <div class="card shadow-sm mt-2">
-                                    <div class="card-body">
-                                        <h6 class="fw-bold">${b.benefit?.name || 'Benefit'}</h6>
-                                        <p class="mb-0">Jumlah: ${b.amount || 'N/A'}</p>
-                                    </div>
+                            <div class="card shadow-sm mt-2">
+                                <div class="card-body">
+                                    <h6 class="fw-bold">${b.benefit?.name || 'Benefit'}</h6>
+                                    <p class="mb-0">Jumlah: ${b.amount || 'N/A'}</p>
                                 </div>
-                            `).join('') :
+                            </div>
+                        `).join('') :
                             '<p class="text-center text-muted">Tidak ada benefit</p>'
                         );
 
                         $('#jobDetailModal').modal('show');
                     },
-                    error: function() {
+                    error: function(xhr, status, error) {
+                        console.error('❌ Error loading job:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -1180,24 +1496,34 @@
             }
 
             // ===== ACCEPT INVITATION =====
-            document.querySelectorAll('.accept-invitation-btn').forEach(button => {
+            document.querySelectorAll('.accept-invitation-action-btn').forEach(button => {
                 button.addEventListener('click', async function() {
-                    const applicationId = this.dataset.applicationId;
+                    const invitationId = this.dataset.invitationId;
                     const companyName = this.dataset.companyName;
                     const jobTitle = this.dataset.jobTitle;
+                    const hasInterview = this.dataset.hasInterview;
+
+                    console.log('✅ Accept invitation clicked:', {
+                        invitationId,
+                        companyName,
+                        jobTitle,
+                        hasInterview
+                    });
 
                     const result = await Swal.fire({
                         title: 'Terima Undangan?',
                         html: `
-                            <div class="text-start">
-                                <p><strong>Perusahaan:</strong> ${companyName}</p>
-                                <p><strong>Posisi:</strong> ${jobTitle}</p>
-                                <div class="alert alert-success mt-3">
-                                    <i class="bi bi-gift me-2"></i>
-                                    Anda akan mendapat <strong>+10 poin</strong> jika menerima undangan ini!
-                                </div>
+                        <div class="text-start">
+                            <p><strong>Perusahaan:</strong> ${companyName}</p>
+                            <p><strong>Posisi:</strong> ${jobTitle}</p>
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                ${hasInterview == 1 
+                                    ? 'Anda akan masuk ke tahap <strong>wawancara</strong>' 
+                                    : 'Anda akan langsung <strong>diterima</strong> untuk posisi ini'}
                             </div>
-                        `,
+                        </div>
+                    `,
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-check-circle me-1"></i>Ya, Terima',
@@ -1211,7 +1537,7 @@
 
                     try {
                         const response = await fetch(
-                            `/applications/${applicationId}/accept-invitation`, {
+                            `/applications/${invitationId}/accept-invitation`, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -1222,17 +1548,13 @@
                             });
 
                         const data = await response.json();
+                        console.log('📥 Accept invitation response:', data);
 
                         if (response.ok && data.success) {
                             await Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil!',
-                                html: `
-                                    <p>${data.message}</p>
-                                    <div class="alert alert-info mt-3">
-                                        <strong>Poin Anda:</strong> ${data.data.old_point} → ${data.data.new_point}
-                                    </div>
-                                `,
+                                text: data.message,
                                 confirmButtonColor: '#28a745'
                             });
                             location.reload();
@@ -1240,6 +1562,7 @@
                             throw new Error(data.message || 'Gagal menerima undangan');
                         }
                     } catch (error) {
+                        console.error('❌ Accept invitation error:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal!',
@@ -1250,80 +1573,210 @@
                 });
             });
 
+            // ===== REJECT INVITATION =====
+            document.querySelectorAll('.reject-invitation-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const invitationId = this.dataset.invitationId;
+                    const companyName = this.dataset.companyName;
+                    const jobTitle = this.dataset.jobTitle;
+
+                    console.log('❌ Reject invitation clicked:', {
+                        invitationId,
+                        companyName,
+                        jobTitle
+                    });
+
+                    document.getElementById('reject-invitation-id').value = invitationId;
+                    document.getElementById('reject-invitation-company-name').textContent =
+                        companyName;
+                    document.getElementById('reject-invitation-job-title').textContent = jobTitle;
+                    document.getElementById('reject-invitation-reason').value = '';
+
+                    const counter = document.getElementById('reject-invitation-char-count');
+                    if (counter) counter.textContent = '0';
+
+                    new bootstrap.Modal(document.getElementById('rejectInvitationModal')).show();
+                });
+            });
+
+            const submitRejectBtn = document.getElementById('submit-reject-invitation-btn');
+            if (submitRejectBtn) {
+                submitRejectBtn.addEventListener('click', async function() {
+                    const invitationId = document.getElementById('reject-invitation-id').value;
+                    const reason = document.getElementById('reject-invitation-reason').value.trim();
+
+                    if (reason.length < 10) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Perhatian',
+                            text: 'Alasan harus minimal 10 karakter',
+                            confirmButtonColor: '#ffc107'
+                        });
+                        return;
+                    }
+
+                    const modalElement = document.getElementById('rejectInvitationModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) modalInstance.hide();
+
+                    // TODO: Implement reject invitation API
+                    console.log('📤 Rejecting invitation:', {
+                        invitationId,
+                        reason
+                    });
+
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Coming Soon',
+                        text: 'Fitur tolak undangan sedang dalam pengembangan'
+                    });
+                });
+            }
+
             // ===== WITHDRAW APPLICATION =====
             document.querySelectorAll('.withdraw-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const applicationId = this.dataset.applicationId;
                     const companyName = this.dataset.companyName;
                     const jobTitle = this.dataset.jobTitle;
+                    const currentStatus = this.dataset.currentStatus;
 
+                    console.log('🔙 Withdraw clicked:', {
+                        applicationId,
+                        companyName,
+                        jobTitle,
+                        currentStatus
+                    });
+
+                    // ✅ Set data ke modal
                     document.getElementById('withdraw-application-id').value = applicationId;
                     document.getElementById('withdraw-company-name').textContent = companyName;
                     document.getElementById('withdraw-job-title').textContent = jobTitle;
                     document.getElementById('withdraw-reason').value = '';
-                    document.getElementById('withdraw-char-count').textContent = '0';
+
+                    const counter = document.getElementById('withdraw-char-count');
+                    if (counter) counter.textContent = '0';
+
+                    // ✅ Update status badge
+                    const statusBadge = document.getElementById('withdraw-status-badge');
+                    const statusColors = {
+                        'invited': 'warning',
+                        'Applied': 'secondary',
+                        'Reviewed': 'info',
+                        'Interview': 'warning',
+                        'Accepted': 'success',
+                        'Pending': 'secondary'
+                    };
+
+                    if (statusBadge) {
+                        statusBadge.textContent = currentStatus;
+                        statusBadge.className =
+                            `badge bg-${statusColors[currentStatus] || 'secondary'}`;
+                    }
+
+                    // ✅ Update alert penalty text berdasarkan status
+                    const penaltyAlert = document.getElementById('withdraw-penalty-alert');
+                    const penaltyText = document.getElementById('withdraw-penalty-text');
+
+                    if (currentStatus === 'Accepted') {
+                        penaltyAlert.className = 'alert alert-danger py-2 mb-3';
+                        penaltyText.innerHTML = `
+                <strong>⚠️ Perhatian Penting!</strong><br>
+                Status lamaran Anda saat ini: <strong>Accepted</strong><br>
+                Menarik lamaran akan:
+                <ul class="mb-0 mt-2">
+                    <li><strong>Mengurangi 5 poin</strong> dari saldo poin Anda</li>
+                    <li><strong>Slot akan dikembalikan</strong> ke perusahaan</li>
+                </ul>
+            `;
+                    } else {
+                        penaltyAlert.className = 'alert alert-info py-2 mb-3';
+                        penaltyText.innerHTML = `
+                <strong>ℹ️ Informasi:</strong><br>
+                Status lamaran Anda saat ini: <strong>${currentStatus}</strong><br>
+                Menarik lamaran <strong>TIDAK akan mengurangi poin</strong> Anda.
+            `;
+                    }
 
                     new bootstrap.Modal(document.getElementById('withdrawModal')).show();
                 });
             });
 
-            document.getElementById('submit-withdraw-btn').addEventListener('click', async function() {
-                const applicationId = document.getElementById('withdraw-application-id').value;
-                const reason = document.getElementById('withdraw-reason').value.trim();
+            const submitWithdrawBtn = document.getElementById('submit-withdraw-btn');
+            if (submitWithdrawBtn) {
+                submitWithdrawBtn.addEventListener('click', async function() {
+                    const applicationId = document.getElementById('withdraw-application-id').value;
+                    const reason = document.getElementById('withdraw-reason').value.trim();
 
-                if (reason.length < 10) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Perhatian',
-                        text: 'Alasan harus minimal 10 karakter',
-                        confirmButtonColor: '#ffc107'
-                    });
-                    return;
-                }
+                    if (reason.length < 10) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Perhatian',
+                            text: 'Alasan harus minimal 10 karakter',
+                            confirmButtonColor: '#ffc107'
+                        });
+                        return;
+                    }
 
-                bootstrap.Modal.getInstance(document.getElementById('withdrawModal')).hide();
+                    const modalElement = document.getElementById('withdrawModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) modalInstance.hide();
 
-                try {
-                    const response = await fetch(`/applications/${applicationId}/withdraw`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector(
-                                'meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            reason: reason
-                        })
-                    });
+                    try {
+                        console.log('📤 Withdrawing application:', {
+                            applicationId,
+                            reason
+                        });
 
-                    const data = await response.json();
+                        const response = await fetch(`/applications/${applicationId}/withdraw`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                reason: reason
+                            })
+                        });
 
-                    if (response.ok && data.success) {
-                        await Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            html: `
-                                <p>${data.message}</p>
+                        const data = await response.json();
+                        console.log('📥 Withdraw response:', data);
+
+                        if (response.ok && data.success) {
+                            let html = `<p>${data.message}</p>`;
+
+                            if (data.data.penalty_applied > 0) {
+                                html += `
                                 <div class="alert alert-warning mt-3">
                                     <strong>Poin Anda:</strong> ${data.data.old_point} → ${data.data.new_point}
+                                    <br><small>Penalty: -${data.data.penalty_applied} poin</small>
                                 </div>
-                            `,
-                            confirmButtonColor: '#28a745'
+                            `;
+                            }
+
+                            await Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                html: html,
+                                confirmButtonColor: '#28a745'
+                            });
+                            location.reload();
+                        } else {
+                            throw new Error(data.message || 'Gagal menarik lamaran');
+                        }
+                    } catch (error) {
+                        console.error('❌ Withdraw error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: error.message,
+                            confirmButtonColor: '#dc3545'
                         });
-                        location.reload();
-                    } else {
-                        throw new Error(data.message || 'Gagal menarik lamaran');
                     }
-                } catch (error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal!',
-                        text: error.message,
-                        confirmButtonColor: '#dc3545'
-                    });
-                }
-            });
+                });
+            }
 
             // ===== REPORT COMPANY =====
             document.querySelectorAll('.report-company-btn').forEach(button => {
@@ -1346,47 +1799,56 @@
                     document.getElementById('report-job-title').textContent = jobTitle;
                     document.getElementById('report-reason').value = '';
                     document.getElementById('report-reason-select').value = '';
-                    document.getElementById('char-count').textContent = '0';
+
+                    const counter = document.getElementById('char-count');
+                    if (counter) counter.textContent = '0';
 
                     new bootstrap.Modal(document.getElementById('reportModal')).show();
                 });
             });
 
-            document.getElementById('report-reason-select').addEventListener('change', function() {
-                const selectedReason = this.value;
-                if (selectedReason && selectedReason !== 'Lainnya') {
-                    document.getElementById('report-reason').value = selectedReason + ': ';
-                    document.getElementById('report-reason').dispatchEvent(new Event('input'));
-                } else if (selectedReason === 'Lainnya') {
-                    document.getElementById('report-reason').value = '';
-                    document.getElementById('report-reason').dispatchEvent(new Event('input'));
-                }
-            });
+            const reportReasonSelect = document.getElementById('report-reason-select');
+            if (reportReasonSelect) {
+                reportReasonSelect.addEventListener('change', function() {
+                    const selectedReason = this.value;
+                    const reasonTextarea = document.getElementById('report-reason');
 
-            document.getElementById('submit-report-btn').addEventListener('click', function() {
-                const applicationId = document.getElementById('report-application-id').value;
-                const reason = document.getElementById('report-reason').value.trim();
-                const companyName = document.getElementById('report-company-name').textContent;
-
-                console.log('📤 Submitting report:', {
-                    applicationId,
-                    reason,
-                    companyName
+                    if (selectedReason && selectedReason !== 'Lainnya') {
+                        reasonTextarea.value = selectedReason + ': ';
+                        reasonTextarea.dispatchEvent(new Event('input'));
+                    } else if (selectedReason === 'Lainnya') {
+                        reasonTextarea.value = '';
+                        reasonTextarea.dispatchEvent(new Event('input'));
+                    }
                 });
+            }
 
-                if (!reason || reason.length < 10) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Alasan Tidak Lengkap',
-                        text: 'Mohon jelaskan alasan laporan Anda minimal 10 karakter.',
-                        confirmButtonColor: '#ffc107'
+            const submitReportBtn = document.getElementById('submit-report-btn');
+            if (submitReportBtn) {
+                submitReportBtn.addEventListener('click', function() {
+                    const applicationId = document.getElementById('report-application-id').value;
+                    const reason = document.getElementById('report-reason').value.trim();
+                    const companyName = document.getElementById('report-company-name').textContent;
+
+                    console.log('📤 Submitting report:', {
+                        applicationId,
+                        reason,
+                        companyName
                     });
-                    return;
-                }
 
-                Swal.fire({
-                    title: 'Konfirmasi Laporan',
-                    html: `
+                    if (!reason || reason.length < 10) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Alasan Tidak Lengkap',
+                            text: 'Mohon jelaskan alasan laporan Anda minimal 10 karakter.',
+                            confirmButtonColor: '#ffc107'
+                        });
+                        return;
+                    }
+
+                    Swal.fire({
+                        title: 'Konfirmasi Laporan',
+                        html: `
                         <div class="text-start">
                             <p class="mb-2">Anda akan melaporkan:</p>
                             <p class="mb-1"><strong>Perusahaan:</strong> ${companyName}</p>
@@ -1397,19 +1859,20 @@
                             </div>
                         </div>
                     `,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: '<i class="bi bi-send me-1"></i>Ya, Kirim Laporan',
-                    cancelButtonText: '<i class="bi bi-x-circle me-1"></i>Batal',
-                    confirmButtonColor: '#dc3545',
-                    cancelButtonColor: '#6c757d',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        submitReport(applicationId, reason);
-                    }
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="bi bi-send me-1"></i>Ya, Kirim Laporan',
+                        cancelButtonText: '<i class="bi bi-x-circle me-1"></i>Batal',
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            submitReport(applicationId, reason);
+                        }
+                    });
                 });
-            });
+            }
 
             async function submitReport(applicationId, reason) {
                 console.log('🔄 Sending report to server...', {
@@ -1422,8 +1885,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector(
-                                'meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify({
@@ -1433,37 +1895,36 @@
                     });
 
                     console.log('📡 Response status:', response.status);
-
                     const data = await response.json();
                     console.log('📥 Response data:', data);
 
                     if (response.ok && data.success) {
-                        bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
+                        const modalElement = document.getElementById('reportModal');
+                        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        if (modalInstance) modalInstance.hide();
 
-                        document.querySelectorAll(
-                                `.report-company-btn[data-application-id="${applicationId}"]`)
+                        document.querySelectorAll(`.report-company-btn[data-application-id="${applicationId}"]`)
                             .forEach(btn => {
                                 btn.classList.remove('btn-outline-danger', 'report-company-btn');
                                 btn.classList.add('btn-success');
                                 btn.disabled = true;
                                 btn.title = 'Laporan Anda sudah diterima';
-                                btn.innerHTML =
-                                    '<i class="bi bi-check-circle me-1"></i>Sudah Dilaporkan';
+                                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Sudah Dilaporkan';
                             });
 
                         Swal.fire({
                             icon: 'success',
                             title: 'Laporan Terkirim!',
                             html: `
-                                <div class="text-start">
-                                    <p class="mb-2">${data.message}</p>
-                                    <div class="alert alert-info py-2 mb-0">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        <small><strong>ID Laporan:</strong> #${data.report.id}</small><br>
-                                        <small><strong>Status:</strong> ${data.report.status}</small>
-                                    </div>
+                            <div class="text-start">
+                                <p class="mb-2">${data.message}</p>
+                                <div class="alert alert-info py-2 mb-0">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <small><strong>ID Laporan:</strong> #${data.report.id}</small><br>
+                                    <small><strong>Status:</strong> ${data.report.status}</small>
                                 </div>
-                            `,
+                            </div>
+                        `,
                             confirmButtonColor: '#28a745'
                         });
                     } else {
@@ -1480,12 +1941,18 @@
                 }
             }
 
-            // ===== BLOCK COMPANY (from Application and Report sections) =====
+            // ===== BLOCK COMPANY =====
             document.querySelectorAll('.block-company-btn, .block-company-btn-application').forEach(button => {
                 button.addEventListener('click', async function() {
                     const companyId = this.dataset.companyId;
                     const companyName = this.dataset.companyName;
                     const jobTitle = this.dataset.jobTitle || '';
+
+                    console.log('🚫 Block company clicked:', {
+                        companyId,
+                        companyName,
+                        jobTitle
+                    });
 
                     if (!companyId) {
                         Swal.fire({
@@ -1502,36 +1969,36 @@
                     } = await Swal.fire({
                         title: 'Blokir Perusahaan?',
                         html: `
-                            <div class="text-start">
-                                <div class="alert alert-warning">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>
-                                    <strong>Perhatian!</strong> Setelah diblokir, Anda tidak akan melihat lowongan dari perusahaan ini lagi.
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Perusahaan:</label>
-                                    <p class="mb-2">${companyName}</p>
-                                </div>
-                                ${jobTitle ? `
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold">Dari Lowongan:</label>
-                                        <p class="mb-2">${jobTitle}</p>
-                                    </div>
-                                    ` : ''}
-                                <div class="mb-3">
-                                    <label for="block-reason" class="form-label fw-bold">
-                                        Alasan Memblokir <span class="text-danger">*</span>
-                                    </label>
-                                    <textarea
-                                        id="block-reason"
-                                        class="form-control"
-                                        placeholder="Jelaskan alasan Anda memblokir perusahaan ini..."
-                                        rows="4"
-                                        required
-                                    ></textarea>
-                                    <small class="text-muted">Minimal 10 karakter</small>
-                                </div>
+                        <div class="text-start">
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Perhatian!</strong> Setelah diblokir, Anda tidak akan melihat lowongan dari perusahaan ini lagi.
                             </div>
-                        `,
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Perusahaan:</label>
+                                <p class="mb-2">${companyName}</p>
+                            </div>
+                            ${jobTitle ? `
+                                                                            <div class="mb-3">
+                                                                                <label class="form-label fw-bold">Dari Lowongan:</label>
+                                                                                <p class="mb-2">${jobTitle}</p>
+                                                                            </div>
+                                                                        ` : ''}
+                            <div class="mb-3">
+                                <label for="block-reason" class="form-label fw-bold">
+                                    Alasan Memblokir <span class="text-danger">*</span>
+                                </label>
+                                <textarea
+                                    id="block-reason"
+                                    class="form-control"
+                                    placeholder="Jelaskan alasan Anda memblokir perusahaan ini..."
+                                    rows="4"
+                                    required
+                                ></textarea>
+                                <small class="text-muted">Minimal 10 karakter</small>
+                            </div>
+                        </div>
+                    `,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-shield-x me-1"></i> Ya, Blokir',
@@ -1542,8 +2009,7 @@
                         width: '600px',
                         preConfirm: () => {
                             const reason = document.getElementById('block-reason')
-                                .value
-                                .trim();
+                                .value.trim();
 
                             if (!reason) {
                                 Swal.showValidationMessage('Alasan wajib diisi!');
@@ -1565,6 +2031,11 @@
                     if (!formValues) return;
 
                     try {
+                        console.log('📤 Blocking company...', {
+                            companyId,
+                            reason: formValues.reason
+                        });
+
                         const response = await fetch('{{ route('company.block') }}', {
                             method: 'POST',
                             headers: {
@@ -1582,18 +2053,19 @@
                         });
 
                         const data = await response.json();
+                        console.log('📥 Block response:', data);
 
                         if (response.ok && data.success) {
                             await Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil Diblokir!',
                                 html: `
-                                    <p>${data.message}</p>
-                                    <div class="alert alert-info mt-3">
-                                        <i class="bi bi-info-circle me-2"></i>
-                                        <small>Lowongan dari <strong>${companyName}</strong> tidak akan muncul lagi.</small>
-                                    </div>
-                                `,
+                                <p>${data.message}</p>
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <small>Lowongan dari <strong>${companyName}</strong> tidak akan muncul lagi.</small>
+                                </div>
+                            `,
                                 confirmButtonColor: '#28a745',
                                 timer: 3000,
                                 timerProgressBar: true
@@ -1604,6 +2076,7 @@
                             throw new Error(data.message || 'Gagal memblokir perusahaan');
                         }
                     } catch (error) {
+                        console.error('❌ Block error:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal Memblokir',
@@ -1622,6 +2095,12 @@
                     const companyId = this.dataset.companyId;
                     const companyName = this.dataset.companyName;
 
+                    console.log('✅ Unblock company clicked:', {
+                        blacklistId,
+                        companyId,
+                        companyName
+                    });
+
                     if (!blacklistId) {
                         Swal.fire({
                             icon: 'error',
@@ -1635,17 +2114,17 @@
                     const result = await Swal.fire({
                         title: 'Buka Blokir Perusahaan?',
                         html: `
-                            <div class="text-start">
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    Setelah dibuka blokirnya, Anda akan kembali melihat lowongan dari perusahaan ini.
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Perusahaan:</label>
-                                    <p class="mb-0">${companyName}</p>
-                                </div>
+                        <div class="text-start">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Setelah dibuka blokirnya, Anda akan kembali melihat lowongan dari perusahaan ini.
                             </div>
-                        `,
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Perusahaan:</label>
+                                <p class="mb-0">${companyName}</p>
+                            </div>
+                        </div>
+                    `,
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-shield-check me-1"></i> Ya, Buka Blokir',
@@ -1659,6 +2138,11 @@
                     if (!result.isConfirmed) return;
 
                     try {
+                        console.log('📤 Unblocking company...', {
+                            blacklistId,
+                            companyId
+                        });
+
                         const response = await fetch('{{ route('company.unblock') }}', {
                             method: 'POST',
                             headers: {
@@ -1674,18 +2158,19 @@
                         });
 
                         const data = await response.json();
+                        console.log('📥 Unblock response:', data);
 
                         if (response.ok && data.success) {
                             await Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil Dibuka!',
                                 html: `
-                                    <p>${data.message}</p>
-                                    <div class="alert alert-success mt-3">
-                                        <i class="bi bi-check-circle me-2"></i>
-                                        <small>Anda kembali dapat melihat lowongan dari <strong>${companyName}</strong>.</small>
-                                    </div>
-                                `,
+                                <p>${data.message}</p>
+                                <div class="alert alert-success mt-3">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    <small>Anda kembali dapat melihat lowongan dari <strong>${companyName}</strong>.</small>
+                                </div>
+                            `,
                                 confirmButtonColor: '#28a745',
                                 timer: 3000,
                                 timerProgressBar: true
@@ -1696,6 +2181,7 @@
                             throw new Error(data.message || 'Gagal membuka blokir');
                         }
                     } catch (error) {
+                        console.error('❌ Unblock error:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal Membuka Blokir',
@@ -1706,6 +2192,8 @@
                     }
                 });
             });
+
+            console.log('✅ All event listeners attached successfully');
         });
     </script>
 @endsection

@@ -33,6 +33,7 @@ class HistoryController extends Controller
                 return view('candidates.riwayat', [
                     'reports' => collect([]),
                     'applications' => collect([]),
+                    'invitations' => collect([]),
                     'feedbackApplicationsFromCompany' => collect([]),
                     'feedbackApplicationsGivenByCandidate' => collect([]),
                     'ratingsReceived' => collect([]),
@@ -41,22 +42,59 @@ class HistoryController extends Controller
                     'statusFilter' => null,
                     'reportedApplicationIds' => [],
                     'blockedCompanies' => collect([]),
-                    'statusOptions' => $this->getDefaultStatuses()
+                    'statusOptions' => $this->getDefaultStatuses(),
+                    'ratingBreakdown' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],
+                    'totalInvitations' => 0,
+                    'myReports' => collect([])
                 ])->with('info', 'Lengkapi profil Anda untuk melihat riwayat lengkap.');
             }
-
-            // ✅ GET REPORTED APPLICATION IDS
+            $myReports = Reports::where('user_id', $user->id)
+                ->with([
+                    'application' => function ($q) {
+                        $q->with([
+                            'jobPosting' => function ($jq) {
+                                $jq->with([
+                                    'company',
+                                    'industry',
+                                    'typeJobs',
+                                    'city',
+                                    'jobDatess' => function ($dateQ) {
+                                        $dateQ->with('day')->orderBy('date', 'asc');
+                                    }
+                                ]);
+                            }
+                        ]);
+                    }
+                ])
+                ->orderBy('created_at', 'desc')
+                ->paginate(10, ['*'], 'myreports_page');
             $reportedApplicationIds = Reports::where('user_id', $user->id)
                 ->pluck('application_id')
                 ->toArray();
 
-            // ✅ GET BLOCKED COMPANIES
             $blockedCompanies = Blacklist::where('user_id', $user->id)
                 ->with(['blockedUser.company'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10, ['*'], 'blocked_page');
 
             $statusFilter = $request->get('status');
+            $totalInvitations = Applications::where('candidates_id', $candidate->id)
+                ->where('invited_by_company', 1)
+                ->count();
+
+            $invitations = Applications::where('candidates_id', $candidate->id)
+                ->where('invited_by_company', 1)
+                ->with([
+                    'jobPosting.company',
+                    'jobPosting.typeJobs',
+                    'jobPosting.city',
+                    'jobPosting.industry',
+                    'jobPosting.skills',
+                    'jobPosting.benefits.benefit',
+                    'jobPosting.jobDatess.day'
+                ])
+                ->orderBy('invited_at', 'desc')
+                ->paginate(10, ['*'], 'invitations_page');
 
             $baseQuery = Applications::where('candidates_id', $candidate->id);
             if ($statusFilter) {
@@ -131,6 +169,22 @@ class HistoryController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate(10, ['*'], 'myfeedback_page');
 
+            $ratingStats = Applications::where('candidates_id', $candidate->id)
+                ->where('status', 'Finished')
+                ->whereNotNull('rating_company')
+                ->select('rating_company', DB::raw('count(*) as count'))
+                ->groupBy('rating_company')
+                ->pluck('count', 'rating_company')
+                ->toArray();
+
+            $ratingBreakdown = [
+                5 => $ratingStats[5] ?? 0,
+                4 => $ratingStats[4] ?? 0,
+                3 => $ratingStats[3] ?? 0,
+                2 => $ratingStats[2] ?? 0,
+                1 => $ratingStats[1] ?? 0,
+            ];
+
             $allItemsCollection = $this->buildAllItemsCollection($candidate, $statusFilter);
 
             $perPage = 10;
@@ -149,6 +203,7 @@ class HistoryController extends Controller
             return view('candidates.riwayat', compact(
                 'reports',
                 'applications',
+                'invitations',
                 'feedbackApplicationsFromCompany',
                 'feedbackApplicationsGivenByCandidate',
                 'ratingsReceived',
@@ -158,7 +213,10 @@ class HistoryController extends Controller
                 'candidate',
                 'reportedApplicationIds',
                 'blockedCompanies',
-                'statusFilter'
+                'statusFilter',
+                'ratingBreakdown',
+                'totalInvitations',
+                'myReports',
             ));
         } catch (\Exception $e) {
             Log::error('History page error: ' . $e->getMessage());
@@ -186,11 +244,8 @@ class HistoryController extends Controller
 
         $reportsQuery = Applications::where('candidates_id', $candidate->id)
             ->where(function ($q) {
-                $q->whereNotNull('rating_candidates')
-                    ->orWhereNotNull('review_candidate')
-                    ->orWhereHas('feedbackApplications', function ($fq) {
-                        $fq->where('given_by', 'company');
-                    });
+                $q->whereNotNull('rating_company')
+                    ->orWhereNotNull('review_company');
             });
         if ($statusFilter) {
             $reportsQuery->where('status', $statusFilter);
@@ -199,10 +254,7 @@ class HistoryController extends Controller
             ->with([
                 'jobPosting.company',
                 'jobPosting.typeJobs',
-                'jobPosting.city',
-                'feedbackApplications' => function ($q) {
-                    $q->where('given_by', 'company')->with('feedback');
-                }
+                'jobPosting.city'
             ])
             ->get()
             ->map(function ($item) {
@@ -265,11 +317,20 @@ class HistoryController extends Controller
             ->values();
     }
 
+    /**
+     * ✅ FIXED: Withdraw application
+     * - Penalty 5 poin HANYA untuk status Accepted
+     * - Status lainnya (Applied, Reviewed, invited) = 0 poin penalty
+     */
     public function withdraw(Request $request, $id)
     {
         try {
             $request->validate([
-                'reason' => 'nullable|string|max:500'
+                'reason' => 'required|string|min:10|max:500'
+            ], [
+                'reason.required' => 'Alasan wajib diisi',
+                'reason.min' => 'Alasan minimal 10 karakter',
+                'reason.max' => 'Alasan maksimal 500 karakter'
             ]);
 
             $user = Auth::user();
@@ -278,75 +339,107 @@ class HistoryController extends Controller
             if (!$candidate) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Candidate not found'
+                    'message' => 'Profil kandidat tidak ditemukan.'
                 ], 404);
             }
 
+            // ✅ FIX: Ambil aplikasi dengan relasi
             $application = Applications::with('jobPosting')
                 ->where('id', $id)
                 ->where('candidates_id', $candidate->id)
-                ->whereIn('status', ['Applied', 'Reviewed', 'invited', 'Accepted'])
-                ->firstOrFail();
+                ->first();
+
+            // ✅ Check if application exists
+            if (!$application) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lamaran tidak ditemukan atau bukan milik Anda.'
+                ], 404);
+            }
+
+            // ✅ FIX: Cek status yang TIDAK BOLEH ditarik
+            $forbiddenStatuses = ['Withdrawn', 'Finished', 'Rejected'];
+            if (in_array($application->status, $forbiddenStatuses)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lamaran dengan status "' . $application->status . '" tidak dapat ditarik.'
+                ], 422);
+            }
 
             $oldStatus = $application->status;
             $oldPoint = $candidate->point ?? 0;
-            $penaltyPoint = 5;
-            $newPoint = max(0, $oldPoint - $penaltyPoint);
 
+            // ✅ PENALTY HANYA UNTUK STATUS "Accepted"
+            $penaltyPoint = 0;
             if ($oldStatus === 'Accepted') {
-                $jobPosting = $application->jobPosting;
-                $jobPosting->increment('slot');
-
-                Log::info('Job posting slot increased (application withdrawn)', [
-                    'job_posting_id' => $jobPosting->id,
-                    'remaining_slots' => $jobPosting->slot,
-                    'application_id' => $id
-                ]);
+                $penaltyPoint = 5;
             }
 
+            $newPoint = max(0, $oldPoint - $penaltyPoint);
+
+            // ✅ Update application status ke Withdrawn
             $application->update([
                 'status' => 'Withdrawn',
                 'withdrawn_at' => now(),
                 'withdraw_reason' => $request->reason
             ]);
 
-            $candidate->update(['point' => $newPoint]);
+            // ✅ Update point kandidat jika ada penalty
+            if ($penaltyPoint > 0) {
+                $candidate->update(['point' => $newPoint]);
+            }
 
+            // ✅ Catat history point (baik ada penalty atau tidak)
             HistoryPoint::create([
                 'candidates_id' => $candidate->id,
                 'application_id' => $application->id,
                 'old_point' => $oldPoint,
                 'new_point' => $newPoint,
-                'reason' => 'withdraw_application'
+                'reason' => $penaltyPoint > 0 ? 'withdraw_accepted' : 'withdraw_application'
             ]);
 
-            Log::info('Application withdrawn', [
+            Log::info('Application withdrawn successfully', [
                 'application_id' => $id,
                 'candidate_id' => $candidate->id,
                 'old_status' => $oldStatus,
                 'old_point' => $oldPoint,
                 'new_point' => $newPoint,
-                'slot_returned' => $oldStatus === 'Accepted' ? 1 : 0
+                'penalty_applied' => $penaltyPoint,
             ]);
+
+            // ✅ Message yang jelas
+            if ($penaltyPoint > 0) {
+                $message = "Lamaran berhasil ditarik dari status '{$oldStatus}'. Poin Anda dikurangi {$penaltyPoint} poin karena sudah diterima.";
+            } else {
+                $message = "Lamaran berhasil ditarik dari status '{$oldStatus}'. Tidak ada pengurangan poin.";
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lamaran berhasil ditarik. Poin Anda dikurangi ' . $penaltyPoint . ' poin.' . ($oldStatus === 'Accepted' ? ' Slot dikembalikan.' : ''),
+                'message' => $message,
                 'data' => [
+                    'old_status' => $oldStatus,
                     'old_point' => $oldPoint,
                     'new_point' => $newPoint,
-                    'slot_returned' => $oldStatus === 'Accepted'
+                    'penalty_applied' => $penaltyPoint,
                 ]
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Error withdrawing application', [
                 'application_id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menarik lamaran: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -367,64 +460,38 @@ class HistoryController extends Controller
             $application = Applications::with('jobPosting')
                 ->where('id', $id)
                 ->where('candidates_id', $candidate->id)
+                ->where('invited_by_company', 1)
+                ->where('status', 'invited')
                 ->first();
 
             if (!$application) {
-                Log::warning('Application not found', [
-                    'application_id' => $id,
-                    'candidate_id' => $candidate->id
-                ]);
-
                 return response()->json([
                     'success' => false,
-                    'message' => 'Lamaran tidak ditemukan atau bukan milik Anda'
+                    'message' => 'Undangan tidak ditemukan atau sudah diproses'
                 ], 404);
             }
 
-            if (!in_array($application->status, ['invited', 'Accepted'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Status lamaran tidak valid untuk menerima undangan. Status saat ini: ' . $application->status
-                ], 400);
-            }
+            $newStatus = $application->jobPosting->has_interview == 1 ? 'Interview' : 'Accepted';
 
-            $oldPoint = $candidate->point ?? 0;
-            $bonusPoint = 10;
-            $newPoint = min(100, $oldPoint + $bonusPoint);
-
-            $application->update(['status' => 'Finished']);
-            $candidate->update(['point' => $newPoint]);
-
-            HistoryPoint::create([
-                'candidates_id' => $candidate->id,
-                'application_id' => $application->id,
-                'old_point' => $oldPoint,
-                'new_point' => $newPoint,
-                'reason' => 'accept_invitation'
+            $application->update([
+                'status' => $newStatus,
+                'applied_at' => now()
             ]);
 
             Log::info('Invitation accepted', [
                 'application_id' => $id,
                 'candidate_id' => $candidate->id,
-                'old_status' => $application->status,
-                'new_status' => 'Finished',
-                'old_point' => $oldPoint,
-                'new_point' => $newPoint
+                'new_status' => $newStatus
             ]);
-
-            $actualReward = $newPoint - $oldPoint;
-            $message = $newPoint >= 100
-                ? 'Undangan berhasil diterima! Poin Anda sudah maksimal (100 poin)!'
-                : "Undangan berhasil diterima! Anda mendapat +{$actualReward} poin!";
 
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => $newStatus === 'Interview'
+                    ? 'Undangan diterima! Anda akan dihubungi untuk tahap wawancara.'
+                    : 'Undangan diterima! Anda telah diterima untuk posisi ini.',
                 'data' => [
-                    'old_point' => $oldPoint,
-                    'new_point' => $newPoint,
-                    'status' => 'Finished',
-                    'is_max' => $newPoint >= 100
+                    'status' => $newStatus,
+                    'has_interview' => $application->jobPosting->has_interview == 1
                 ]
             ]);
         } catch (\Exception $e) {
@@ -471,10 +538,10 @@ class HistoryController extends Controller
                 ], 403);
             }
 
-            if ($application->status !== 'Accepted') {
+            if (!in_array($application->status, ['Accepted', 'Finished'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Hanya aplikasi dengan status Accepted yang bisa diberi rating.'
+                    'message' => 'Hanya aplikasi dengan status Accepted atau Finished yang bisa diberi rating.'
                 ], 422);
             }
 
@@ -566,16 +633,17 @@ class HistoryController extends Controller
         $averageRating = Applications::whereHas('jobPosting', function ($query) use ($companyId) {
             $query->where('companies_id', $companyId);
         })
-            ->whereNotNull('rating_company')
+            ->where('status', 'Finished')
+            ->where('rating_company', '>', 0)
             ->avg('rating_company');
 
         $company->update([
-            'avg_rating' => round($averageRating, 2)
+            'avg_rating' => round($averageRating ?? 0, 2)
         ]);
 
         Log::info('Company average rating updated', [
             'company_id' => $companyId,
-            'avg_rating' => round($averageRating, 2)
+            'avg_rating' => round($averageRating ?? 0, 2)
         ]);
     }
 
@@ -597,11 +665,8 @@ class HistoryController extends Controller
             case 'reports':
                 $query = Applications::where('candidates_id', $candidate->id)
                     ->where(function ($q) {
-                        $q->whereNotNull('rating_candidates')
-                            ->orWhereNotNull('review_candidate')
-                            ->orWhereHas('feedbackApplications', function ($fq) {
-                                $fq->where('given_by', 'company');
-                            });
+                        $q->whereNotNull('rating_company')
+                            ->orWhereNotNull('review_company');
                     })
                     ->with(['jobPosting.company', 'jobPosting.typeJobs']);
 
@@ -638,6 +703,29 @@ class HistoryController extends Controller
                 }
 
                 $data = $query->orderBy('updated_at', 'desc')->get();
+                break;
+
+            case 'invitations':
+                $data = Applications::where('candidates_id', $candidate->id)
+                    ->where('invited_by_company', 1)
+                    ->with([
+                        'jobPosting.company',
+                        'jobPosting.typeJobs',
+                        'jobPosting.city'
+                    ])
+                    ->orderBy('invited_at', 'desc')
+                    ->get();
+                break;
+
+            case 'my_reports':
+                $data = Reports::where('user_id', $user->id)
+                    ->with([
+                        'application.jobPosting.company',
+                        'application.jobPosting.typeJobs',
+                        'application.candidate'
+                    ])
+                    ->orderBy('created_at', 'desc')
+                    ->get();
                 break;
 
             default:
@@ -681,13 +769,43 @@ class HistoryController extends Controller
         }
     }
 
+    public function getInvitations(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $candidate = Candidates::where('user_id', $user->id)->first();
+
+            if (!$candidate) {
+                return response()->json(['error' => 'Candidate not found'], 404);
+            }
+
+            $invitations = Applications::where('candidates_id', $candidate->id)
+                ->where('invited_by_company', 1)
+                ->with([
+                    'jobPosting.company',
+                    'jobPosting.typeJobs',
+                    'jobPosting.city',
+                    'jobPosting.industry',
+                    'jobPosting.skills',
+                    'jobPosting.benefits.benefit',
+                    'jobPosting.jobDatess.day'
+                ])
+                ->orderBy('invited_at', 'desc')
+                ->paginate(10, ['*'], 'invitations_page');
+
+            return response()->json($invitations);
+        } catch (\Exception $e) {
+            Log::error('Error fetching invitations: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch invitations'], 500);
+        }
+    }
+
     private function getDefaultStatuses()
     {
         return [
             'invited',
-            'Applied',
-            'Reviewed',
-            'Interview',
+            'Selection',
+            'Pending',
             'Accepted',
             'Rejected',
             'Withdrawn',

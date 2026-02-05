@@ -243,14 +243,15 @@ class CompanyController extends Controller
     }
 
     /**
-     * Display the specified company
-     * ✅ FIX: Filter job postings yang Approved, hitung review yang valid
+     * ✅✅✅ FIXED: Display the specified company
+     * HANYA METHOD INI YANG DIUBAH - Filter reviews yang sudah FINISHED dan ada rating
      */
     public function show($id)
     {
+        // ✅ LOAD COMPANY DENGAN RELASI
         $company = Companies::with([
             'industries',
-            // ✅ FIX: Filter job postings yang Approved dan Open
+            // Filter job postings yang Approved dan Open
             'jobPostings' => function ($query) {
                 $query->where('status', 'Open')
                     ->where('verification_status', 'Approved')
@@ -263,8 +264,7 @@ class CompanyController extends Controller
                         'benefits.benefit',
                         'company'
                     ]);
-            },
-            'reviews.candidate'
+            }
         ])
             ->findOrFail($id);
 
@@ -279,22 +279,43 @@ class CompanyController extends Controller
             }
         }
 
-        // ✅ FIX: Hitung total reviews yang valid (ada rating)
-        $totalReviews = $company->reviews()
-            ->whereNotNull('rating_company')
-            ->where('rating_company', '>', 0)
-            ->count();
+        // ✅✅✅ FIX 1: LOAD REVIEWS YANG SUDAH FINISHED DAN ADA RATING
+        // Ini yang kamu tanya kemana taruhnya - INI DI SINI!
+        $validReviews = Applications::whereHas('jobPosting', function ($q) use ($id) {
+            $q->where('companies_id', $id);
+        })
+            ->where('status', 'Finished')              // ✅ HANYA FINISHED
+            ->where('rating_company', '>', 0)          // ✅ HANYA RATING > 0
+            ->whereNotNull('review_company')           // ✅ HANYA YANG ADA REVIEW
+            ->with('candidate')
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
-        // ✅ FIX: Rating stats yang akurat
-        $ratingStats = [
-            5 => $company->reviews->where('rating_company', 5)->count(),
-            4 => $company->reviews->where('rating_company', 4)->count(),
-            3 => $company->reviews->where('rating_company', 3)->count(),
-            2 => $company->reviews->where('rating_company', 2)->count(),
-            1 => $company->reviews->where('rating_company', 1)->count(),
+        // ✅✅✅ FIX 2: HITUNG RATING STATS DARI FINISHED APPLICATIONS
+        // Ini yang kedua kamu tanya - INI DI SINI!
+        $ratingStats = Applications::whereHas('jobPosting', function ($query) use ($id) {
+            $query->where('companies_id', $id);
+        })
+            ->where('status', 'Finished')              // ✅ HANYA FINISHED
+            ->where('rating_company', '>', 0)          // ✅ HANYA RATING > 0
+            ->selectRaw('rating_company, COUNT(*) as count')
+            ->groupBy('rating_company')
+            ->pluck('count', 'rating_company')
+            ->toArray();
+
+        // ✅ FORMAT RATING STATS (1-5)
+        $formattedRatingStats = [
+            5 => $ratingStats[5] ?? 0,
+            4 => $ratingStats[4] ?? 0,
+            3 => $ratingStats[3] ?? 0,
+            2 => $ratingStats[2] ?? 0,
+            1 => $ratingStats[1] ?? 0,
         ];
 
-        // ✅ SERIALIZE JOB POSTINGS
+        // ✅ TOTAL REVIEWS YANG VALID
+        $totalReviews = array_sum($formattedRatingStats);
+
+        // ✅ SERIALIZE JOB POSTINGS (TIDAK DIUBAH)
         $jobPostings = $company->jobPostings->map(function ($job) use ($company) {
             return [
                 'id' => $job->id,
@@ -371,6 +392,7 @@ class CompanyController extends Controller
             ];
         });
 
+        // ✅ RETURN JSON DENGAN REVIEWS YANG SUDAH DIFILTER
         return response()->json([
             'company' => [
                 'id' => $company->id,
@@ -384,11 +406,11 @@ class CompanyController extends Controller
                     'name' => $company->industries->name,
                 ] : null,
                 'job_postings' => $jobPostings,
-                'reviews' => $company->reviews,
+                'reviews' => $validReviews,  // ✅ GUNAKAN VALID REVIEWS
             ],
             'isSubscribed' => $isSubscribed,
-            'rating_stats' => $ratingStats,
-            'total_reviews' => $totalReviews // ✅ FIX: Gunakan yang sudah di-filter
+            'rating_stats' => $formattedRatingStats,  // ✅ GUNAKAN FORMATTED STATS
+            'total_reviews' => $totalReviews          // ✅ GUNAKAN TOTAL YANG SUDAH DIFILTER
         ]);
     }
 
