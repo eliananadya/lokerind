@@ -34,7 +34,8 @@ class RiwayatCompanyController extends Controller
             }
 
             $statusFilter = $request->get('status');
-
+            $searchFilter = $request->get('search');
+            // Base query untuk semua tab
             $baseQuery = Applications::whereHas('jobPosting', function ($query) use ($company) {
                 $query->where('companies_id', $company->id);
             });
@@ -42,20 +43,13 @@ class RiwayatCompanyController extends Controller
             if ($statusFilter) {
                 $baseQuery->where('status', $statusFilter);
             }
-
-            $allItems = (clone $baseQuery)
-                ->with([
-                    'candidate.user',
-                    'jobPosting.typeJobs',
-                    'jobPosting.city',
-                    'feedbackApplications' => function ($q) {
-                        $q->with('feedback');
-                    }
-                ])
-                ->orderBy('created_at', 'desc')
-                ->paginate(10, ['*'], 'all_page');
-
-            $applications = (clone $baseQuery)
+            if ($searchFilter) {
+                $baseQuery->whereHas('jobPosting', function ($q) use ($searchFilter) {
+                    $q->where('title', 'like', "%{$searchFilter}%");
+                });
+            }
+            // Tab 1: Applications - HANYA STATUS FINISHED
+            $applications = (clone $baseQuery) // ✅ Filter hanya Finished
                 ->with([
                     'candidate.user',
                     'jobPosting.typeJobs',
@@ -67,8 +61,11 @@ class RiwayatCompanyController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate(10, ['*'], 'apps_page');
 
+            // Tab 2: Rating dan Review - HANYA YANG ADA RATING (1-5)
             $ratingsFromCandidates = (clone $baseQuery)
                 ->whereNotNull('rating_company')
+                ->where('rating_company', '>=', 1) // ✅ Rating minimal 1
+                ->where('rating_company', '<=', 5) // ✅ Rating maksimal 5
                 ->with([
                     'candidate.user',
                     'jobPosting.typeJobs',
@@ -77,6 +74,7 @@ class RiwayatCompanyController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10, ['*'], 'ratings_page');
 
+            // Tab 3: Reviews - HANYA YANG ADA REVIEW TEXT
             $reviewsFromCandidates = (clone $baseQuery)
                 ->whereNotNull('review_company')
                 ->where('review_company', '!=', '')
@@ -88,41 +86,7 @@ class RiwayatCompanyController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10, ['*'], 'reviews_page');
 
-            $feedbackGivenByCompany = (clone $baseQuery)
-                ->whereHas('feedbackApplications', function ($q) {
-                    $q->where('given_by', 'company');
-                })
-                ->with([
-                    'candidate.user',
-                    'jobPosting.typeJobs',
-                    'jobPosting.city',
-                    'feedbackApplications' => function ($q) {
-                        $q->where('given_by', 'company')->with('feedback');
-                    }
-                ])
-                ->orderBy('updated_at', 'desc')
-                ->paginate(10, ['*'], 'feedback_page');
-
-            $acceptedApplications = (clone $baseQuery)
-                ->where('status', 'Accepted')
-                ->with([
-                    'candidate.user',
-                    'jobPosting.typeJobs',
-                    'jobPosting.city'
-                ])
-                ->orderBy('updated_at', 'desc')
-                ->paginate(10, ['*'], 'accepted_page');
-
-            $rejectedApplications = (clone $baseQuery)
-                ->where('status', 'Rejected')
-                ->with([
-                    'candidate.user',
-                    'jobPosting.typeJobs',
-                    'jobPosting.city'
-                ])
-                ->orderBy('updated_at', 'desc')
-                ->paginate(10, ['*'], 'rejected_page');
-
+            // Tab 4: Report - Review yang bisa dilaporkan
             $reviewsToReport = (clone $baseQuery)
                 ->whereNotNull('review_company')
                 ->where('review_company', '!=', '')
@@ -137,18 +101,24 @@ class RiwayatCompanyController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10, ['*'], 'reports_page');
 
+            // Stats
             $stats = [
                 'total_applications' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->count(),
                 'pending_applications' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->where('status', 'Applied')->count(),
                 'accepted_applications' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->where('status', 'Accepted')->count(),
                 'rejected_applications' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->where('status', 'Rejected')->count(),
-                'total_ratings' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->whereNotNull('rating_company')->count(),
+                'total_ratings' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->whereNotNull('rating_company')->where('rating_company', '>=', 1)->count(),
                 'average_rating' => round($company->avg_rating ?? 0, 2),
                 'total_reviews' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->whereNotNull('review_company')->where('review_company', '!=', '')->count(),
             ];
 
-            $feedbacks = Feedback::where('for', 'candidate')->where('is_active', true)->get();
+            // ✅ Ambil feedback untuk CANDIDATE saja (bukan company)
+            $feedbacks = Feedback::where('for', 'candidate')
+                ->where('is_active', true)
+                ->orderBy('name', 'asc')
+                ->get();
 
+            // Blacklist users
             $blacklistedUsers = Blacklist::where('user_id', $user->id)
                 ->pluck('blocked_user_id')
                 ->toArray();
@@ -157,15 +127,12 @@ class RiwayatCompanyController extends Controller
                 'applications',
                 'ratingsFromCandidates',
                 'reviewsFromCandidates',
-                'feedbackGivenByCompany',
-                'acceptedApplications',
-                'rejectedApplications',
                 'reviewsToReport',
-                'allItems',
                 'company',
                 'stats',
                 'feedbacks',
                 'statusFilter',
+                'searchFilter',
                 'blacklistedUsers'
             ));
         } catch (\Exception $e) {
@@ -230,6 +197,7 @@ class RiwayatCompanyController extends Controller
 
             $blockedUserId = $application->candidate->user_id;
 
+            // ✅ Cek apakah sudah diblokir
             $existingBlock = Blacklist::where('user_id', $user->id)
                 ->where('blocked_user_id', $blockedUserId)
                 ->first();
@@ -241,6 +209,7 @@ class RiwayatCompanyController extends Controller
                 ], 400);
             }
 
+            // ✅ Buat blacklist baru
             Blacklist::create([
                 'reason' => $request->reason,
                 'user_id' => $user->id,
@@ -262,6 +231,7 @@ class RiwayatCompanyController extends Controller
 
     public function rateCandidate(Request $request, $applicationId)
     {
+        // ✅ Validasi input
         $request->validate([
             'rating_candidates' => 'required|integer|min:1|max:5',
             'review_candidate' => 'nullable|string|max:1000',
@@ -274,10 +244,20 @@ class RiwayatCompanyController extends Controller
             $user = Auth::user();
             $company = Companies::where('user_id', $user->id)->firstOrFail();
 
+            // ✅ Cari application milik company ini
             $application = Applications::whereHas('jobPosting', function ($query) use ($company) {
                 $query->where('companies_id', $company->id);
             })->findOrFail($applicationId);
 
+            // ✅ VALIDASI: Hanya bisa rate kalau status = Finished
+            if ($application->status !== 'Finished') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rating hanya bisa diberikan untuk aplikasi dengan status "Finished".'
+                ], 422);
+            }
+
+            // ✅ VALIDASI: Cek apakah sudah pernah kasih rating
             if ($application->rating_candidates) {
                 return response()->json([
                     'success' => false,
@@ -285,21 +265,24 @@ class RiwayatCompanyController extends Controller
                 ], 422);
             }
 
+            // ✅ Update rating dan review
             $application->update([
                 'rating_candidates' => $request->rating_candidates,
                 'review_candidate' => $request->review_candidate,
             ]);
 
+            // ✅ Simpan feedback (jika ada)
             if ($request->has('feedbacks') && is_array($request->feedbacks)) {
                 foreach ($request->feedbacks as $feedbackId) {
                     FeedbackApplication::create([
-                        'given_by' => 'company',
+                        'given_by' => 'company', // ✅ Feedback dari company
                         'feedback_id' => $feedbackId,
                         'application_id' => $application->id,
                     ]);
                 }
             }
 
+            // ✅ Update average rating candidate
             $this->updateCandidateAverageRating($application->candidates_id);
 
             DB::commit();

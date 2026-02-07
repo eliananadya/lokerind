@@ -312,12 +312,6 @@
             color: white;
         }
 
-        .btn-rated {
-            background: #10b981;
-            color: white;
-            cursor: default;
-        }
-
         .btn-warning {
             background: #f59e0b;
             color: white;
@@ -553,25 +547,29 @@
             <div class="filter-bar">
                 <div class="flex-grow-1">
                     <label class="form-label mb-2 fw-semibold" style="font-size: 0.875rem; color: #475569;">
+                        <i class="bi bi-search me-2"></i>Cari Judul
+                    </label>
+                    <input type="text" class="form-control filter-select" id="searchFilter"
+                        placeholder="Ketik nama Judul" value="{{ request('search') }}">
+                </div>
+
+                <div style="min-width: 200px;">
+                    <label class="form-label mb-2 fw-semibold" style="font-size: 0.875rem; color: #475569;">
                         <i class="bi bi-funnel me-2"></i>Filter Status
                     </label>
                     <select class="form-select filter-select" id="statusFilter">
                         <option value="">Semua Status</option>
-                        <option value="Pending" {{ $statusFilter == 'Pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="Selection" {{ $statusFilter == 'Selection' ? 'selected' : '' }}>Selection</option>
-                        <option value="Invited" {{ $statusFilter == 'Invited' ? 'selected' : '' }}>Invited</option>
-                        <option value="Accepted" {{ $statusFilter == 'Accepted' ? 'selected' : '' }}>Accepted</option>
-                        <option value="Rejected" {{ $statusFilter == 'Rejected' ? 'selected' : '' }}>Rejected</option>
-                        <option value="Finished" {{ $statusFilter == 'Finished' ? 'selected' : '' }}>Finished</option>
-                        <option value="Withdrawn" {{ $statusFilter == 'Withdrawn' ? 'selected' : '' }}>Withdrawn</option>
+                        <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="Selection" {{ request('status') == 'Selection' ? 'selected' : '' }}>Selection
+                        </option>
+                        <option value="Invited" {{ request('status') == 'Invited' ? 'selected' : '' }}>Invited</option>
+                        <option value="Accepted" {{ request('status') == 'Accepted' ? 'selected' : '' }}>Accepted</option>
+                        <option value="Rejected" {{ request('status') == 'Rejected' ? 'selected' : '' }}>Rejected</option>
+                        <option value="Finished" {{ request('status') == 'Finished' ? 'selected' : '' }}>Finished</option>
+                        <option value="Withdrawn" {{ request('status') == 'Withdrawn' ? 'selected' : '' }}>Withdrawn
+                        </option>
                     </select>
                 </div>
-                @if ($statusFilter)
-                    <button type="button" class="btn btn-outline-primary" id="clearFilter">
-                        <i class="bi bi-x-circle me-2"></i>
-                        Hapus Filter
-                    </button>
-                @endif
             </div>
 
             <ul class="nav nav-tabs" id="historyTabs" role="tablist">
@@ -597,10 +595,10 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="report-tab" data-bs-toggle="tab" data-bs-target="#report" type="button"
-                        role="tab">
-                        <i class="bi bi-flag me-2"></i>Blacklist
-
+                    <button class="nav-link" id="blacklist-tab" data-bs-toggle="tab" data-bs-target="#blacklist"
+                        type="button" role="tab">
+                        <i class="bi bi-slash-circle me-2"></i>Blacklist
+                        <span class="tab-badge">0</span>
                     </button>
                 </li>
             </ul>
@@ -656,26 +654,30 @@
                             </div>
 
                             <div class="action-buttons">
-                                @if (!$application->rating_candidates && in_array($application->status, ['Accepted', 'Rejected']))
-                                    <button class="btn btn-rate btn-rate-candidate"
-                                        data-application-id="{{ $application->id }}"
-                                        data-candidate-name="{{ $application->candidate->name ?? 'Kandidat' }}">
-                                        <i class="bi bi-star"></i>
-                                        Beri Rating & Review
-                                    </button>
-                                @elseif($application->rating_candidates)
-                                    <button class="btn btn-rated" disabled>
-                                        <i class="bi bi-check-circle"></i>
-                                        Sudah Diberi Rating
-                                    </button>
-                                @endif
-
-                                @if ($application->candidate && $application->candidate->cv_path)
-                                    <a href="{{ Storage::url($application->candidate->cv_path) }}"
-                                        class="btn btn-outline-primary" target="_blank">
-                                        <i class="bi bi-file-earmark-pdf"></i>
-                                        Lihat CV
-                                    </a>
+                                @if ($application->status === 'Finished')
+                                    @if (!$application->rating_candidates)
+                                        <button class="btn btn-rate btn-rate-candidate"
+                                            data-application-id="{{ $application->id }}"
+                                            data-candidate-name="{{ $application->candidate->name ?? 'Kandidat' }}">
+                                            <i class="bi bi-star"></i>
+                                            Beri Rating & Review
+                                        </button>
+                                    @else
+                                        <button class="btn btn-secondary" disabled>
+                                            <i class="bi bi-check-circle"></i>
+                                            Sudah Diberi Rating
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-view-rating"
+                                            data-application-id="{{ $application->id }}"
+                                            data-candidate-name="{{ $application->candidate->name ?? 'Kandidat' }}"
+                                            data-rating="{{ $application->rating_candidates }}"
+                                            data-review="{{ $application->review_candidate ?? '' }}"
+                                            data-feedbacks="{{ $application->feedbackApplications->where('given_by', 'company')->pluck('feedback.name')->implode(', ') }}">
+                                            <i class="bi bi-eye"></i>
+                                            Lihat Detail Rating
+                                        </button>
+                                    @endif
+                                @else
                                 @endif
                             </div>
                         </div>
@@ -725,7 +727,7 @@
                                 <div class="meta-item">
                                     <i class="bi bi-briefcase-fill"></i>
                                     <strong>Posisi:</strong>
-                                    <span>{{ $application->jobPosting->title ?? ($application->jobPosting->job_title ?? 'Tidak Tersedia') }}</span>
+                                    <span>{{ $rating->jobPosting->title ?? ($rating->jobPosting->job_title ?? 'Tidak Tersedia') }}</span>
                                 </div>
                                 <div class="meta-item">
                                     <i class="bi bi-calendar-event"></i>
@@ -753,71 +755,6 @@
                     @endforelse
 
                     {{ $ratingsFromCandidates->appends(['status' => $statusFilter])->links() }}
-                </div>
-
-                <!-- Tab Review -->
-                <div class="tab-pane fade" id="reviews" role="tabpanel">
-                    @forelse($reviewsFromCandidates as $review)
-                        <div class="history-item">
-                            <div class="history-header">
-                                <div class="candidate-info">
-                                    <div class="candidate-avatar">
-                                        {{ strtoupper(substr($review->candidate->name ?? 'U', 0, 1)) }}
-                                    </div>
-                                    <div class="candidate-details">
-                                        <h5>{{ $review->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
-                                        <p class="candidate-email">
-                                            <i class="bi bi-envelope"></i>
-                                            {{ $review->candidate->email ?? 'Email Tidak Tersedia' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                @if ($review->rating_company)
-                                    <div class="rating-display">
-                                        <span class="rating-stars">
-                                            @for ($i = 1; $i <= 5; $i++)
-                                                @if ($i <= $review->rating_company)
-                                                    <i class="bi bi-star-fill"></i>
-                                                @else
-                                                    <i class="bi bi-star"></i>
-                                                @endif
-                                            @endfor
-                                        </span>
-                                        <span>{{ $review->rating_company }}/5</span>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <div class="history-meta">
-                                <div class="meta-item">
-                                    <i class="bi bi-briefcase-fill"></i>
-                                    <strong>Posisi:</strong>
-                                    <span>{{ $review->jobPosting->job_title ?? 'Tidak Tersedia' }}</span>
-                                </div>
-                                <div class="meta-item">
-                                    <i class="bi bi-calendar-event"></i>
-                                    <strong>Tanggal Review:</strong>
-                                    <span>{{ $review->updated_at->format('d M Y') }}</span>
-                                </div>
-                            </div>
-
-                            <div class="review-box">
-                                <h6>
-                                    <i class="bi bi-chat-quote me-2"></i>
-                                    Review dari Kandidat:
-                                </h6>
-                                <p class="review-text">{{ $review->review_company }}</p>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="empty-state">
-                            <i class="bi bi-chat-quote"></i>
-                            <h4>Belum Ada Review</h4>
-                            <p>Review dari kandidat akan muncul di sini</p>
-                        </div>
-                    @endforelse
-
-                    {{ $reviewsFromCandidates->appends(['status' => $statusFilter])->links() }}
                 </div>
 
                 <!-- Tab Report -->
@@ -857,7 +794,7 @@
                                 <div class="meta-item">
                                     <i class="bi bi-briefcase-fill"></i>
                                     <strong>Posisi:</strong>
-                                    <span>{{ $review->jobPosting->job_title ?? 'Tidak Tersedia' }}</span>
+                                    <span>{{ $review->jobPosting->title ?? ($review->jobPosting->job_title ?? 'Tidak Tersedia') }}</span>
                                 </div>
                                 <div class="meta-item">
                                     <i class="bi bi-calendar-event"></i>
@@ -921,150 +858,13 @@
                     {{ $reviewsToReport->appends(['status' => $statusFilter])->links() }}
                 </div>
 
-                <!-- Tab Accepted -->
-                <div class="tab-pane fade" id="accepted" role="tabpanel">
-                    @forelse($acceptedApplications as $accepted)
-                        <div class="history-item">
-                            <div class="history-header">
-                                <div class="candidate-info">
-                                    <div class="candidate-avatar">
-                                        {{ strtoupper(substr($accepted->candidate->name ?? 'U', 0, 1)) }}
-                                    </div>
-                                    <div class="candidate-details">
-                                        <h5>{{ $accepted->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
-                                        <p class="candidate-email">
-                                            <i class="bi bi-envelope"></i>
-                                            {{ $accepted->candidate->email ?? 'Email Tidak Tersedia' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <span class="badge badge-accepted">
-                                        <i class="bi bi-check-circle-fill me-1"></i>
-                                        Diterima
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="history-meta">
-                                <div class="meta-item">
-                                    <i class="bi bi-briefcase-fill"></i>
-                                    <strong>Posisi:</strong>
-                                    <span>{{ $accepted->jobPosting->job_title ?? 'Tidak Tersedia' }}</span>
-                                </div>
-                                <div class="meta-item">
-                                    <i class="bi bi-calendar-event"></i>
-                                    <strong>Tanggal Diterima:</strong>
-                                    <span>{{ $accepted->updated_at->format('d M Y') }}</span>
-                                </div>
-                            </div>
-
-                            <div class="action-buttons">
-                                @if (!$accepted->rating_candidates)
-                                    <button class="btn btn-rate btn-rate-candidate"
-                                        data-application-id="{{ $accepted->id }}"
-                                        data-candidate-name="{{ $accepted->candidate->name ?? 'Kandidat' }}">
-                                        <i class="bi bi-star"></i>
-                                        Beri Rating & Review
-                                    </button>
-                                @else
-                                    <button class="btn btn-rated" disabled>
-                                        <i class="bi bi-check-circle"></i>
-                                        Sudah Diberi Rating
-                                    </button>
-                                @endif
-
-                                @if ($accepted->candidate && $accepted->candidate->cv_path)
-                                    <a href="{{ Storage::url($accepted->candidate->cv_path) }}"
-                                        class="btn btn-outline-primary" target="_blank">
-                                        <i class="bi bi-file-earmark-pdf"></i>
-                                        Lihat CV
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    @empty
-                        <div class="empty-state">
-                            <i class="bi bi-check-circle"></i>
-                            <h4>Belum Ada Kandidat Diterima</h4>
-                            <p>Kandidat yang diterima akan muncul di sini</p>
-                        </div>
-                    @endforelse
-
-                    {{ $acceptedApplications->appends(['status' => $statusFilter])->links() }}
-                </div>
-
-                <!-- Tab Rejected -->
-                <div class="tab-pane fade" id="rejected" role="tabpanel">
-                    @forelse($rejectedApplications as $rejected)
-                        <div class="history-item">
-                            <div class="history-header">
-                                <div class="candidate-info">
-                                    <div class="candidate-avatar">
-                                        {{ strtoupper(substr($rejected->candidate->name ?? 'U', 0, 1)) }}
-                                    </div>
-                                    <div class="candidate-details">
-                                        <h5>{{ $rejected->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
-                                        <p class="candidate-email">
-                                            <i class="bi bi-envelope"></i>
-                                            {{ $rejected->candidate->email ?? 'Email Tidak Tersedia' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <span class="badge badge-rejected">
-                                        <i class="bi bi-x-circle-fill me-1"></i>
-                                        Ditolak
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="history-meta">
-                                <div class="meta-item">
-                                    <i class="bi bi-briefcase-fill"></i>
-                                    <strong>Posisi:</strong>
-                                    <span>{{ $rejected->jobPosting->job_title ?? 'Tidak Tersedia' }}</span>
-                                </div>
-                                <div class="meta-item">
-                                    <i class="bi bi-calendar-event"></i>
-                                    <strong>Tanggal Ditolak:</strong>
-                                    <span>{{ $rejected->updated_at->format('d M Y') }}</span>
-                                </div>
-                            </div>
-
-                            <div class="action-buttons">
-                                @if (!$rejected->rating_candidates)
-                                    <button class="btn btn-rate btn-rate-candidate"
-                                        data-application-id="{{ $rejected->id }}"
-                                        data-candidate-name="{{ $rejected->candidate->name ?? 'Kandidat' }}">
-                                        <i class="bi bi-star"></i>
-                                        Beri Rating & Review
-                                    </button>
-                                @else
-                                    <button class="btn btn-rated" disabled>
-                                        <i class="bi bi-check-circle"></i>
-                                        Sudah Diberi Rating
-                                    </button>
-                                @endif
-
-                                @if ($rejected->candidate && $rejected->candidate->cv_path)
-                                    <a href="{{ Storage::url($rejected->candidate->cv_path) }}"
-                                        class="btn btn-outline-primary" target="_blank">
-                                        <i class="bi bi-file-earmark-pdf"></i>
-                                        Lihat CV
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    @empty
-                        <div class="empty-state">
-                            <i class="bi bi-x-circle"></i>
-                            <h4>Belum Ada Kandidat Ditolak</h4>
-                            <p>Kandidat yang ditolak akan muncul di sini</p>
-                        </div>
-                    @endforelse
-
-                    {{ $rejectedApplications->appends(['status' => $statusFilter])->links() }}
+                <!-- Tab Blacklist -->
+                <div class="tab-pane fade" id="blacklist" role="tabpanel">
+                    <div class="empty-state">
+                        <i class="bi bi-slash-circle"></i>
+                        <h4>Belum Ada Pengguna Diblokir</h4>
+                        <p>Kandidat yang diblokir akan muncul di sini</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1314,7 +1114,7 @@
 
             // Status Filter Functionality
             const statusFilter = document.getElementById('statusFilter');
-            const clearFilterBtn = document.getElementById('clearFilter');
+            const searchFilter = document.getElementById('searchFilter');
 
             if (statusFilter) {
                 statusFilter.addEventListener('change', function() {
@@ -1330,14 +1130,26 @@
                 });
             }
 
-            if (clearFilterBtn) {
-                clearFilterBtn.addEventListener('click', function() {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('status');
-                    window.location.href = url.toString();
+            if (searchFilter) {
+                let searchTimeout;
+
+                searchFilter.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+
+                    searchTimeout = setTimeout(() => {
+                        const searchValue = this.value.trim();
+                        const url = new URL(window.location.href);
+
+                        if (searchValue) {
+                            url.searchParams.set('search', searchValue);
+                        } else {
+                            url.searchParams.delete('search');
+                        }
+
+                        window.location.href = url.toString();
+                    }, 500);
                 });
             }
-
             // Rate Candidate Functionality
             document.querySelectorAll('.btn-rate-candidate').forEach(button => {
                 button.addEventListener('click', async function() {
@@ -1360,8 +1172,8 @@
                             </label>
                             <div class="star-rating" id="starRating">
                                 ${[1,2,3,4,5].map(star => `
-                                                                                                    <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
-                                                                                                `).join('')}
+                                                                                                                                                                                                                                <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
+                                                                                                                                                                                                                            `).join('')}
                             </div>
                             <input type="hidden" id="ratingValue" value="0">
                         </div>
@@ -1491,14 +1303,6 @@
                     });
 
                     if (!formValues) return;
-
-                    Swal.fire({
-                        title: 'Menyimpan...',
-                        html: '<div class="spinner-border text-success" style="width: 3rem; height: 3rem;"></div>',
-                        showConfirmButton: false,
-                        allowOutsideClick: false
-                    });
-
                     try {
                         const response = await fetch(
                             `{{ route('company.riwayat.rate', '') }}/${applicationId}`, {
@@ -1538,6 +1342,95 @@
                             text: error.message,
                             confirmButtonColor: '#dc3545'
                         });
+                    }
+                });
+            });
+        });
+        // ✅ View Rating Detail Functionality
+        document.querySelectorAll('.btn-view-rating').forEach(button => {
+            button.addEventListener('click', function() {
+                const candidateName = this.dataset.candidateName;
+                const rating = this.dataset.rating;
+                const review = this.dataset.review;
+                const feedbacks = this.dataset.feedbacks;
+
+                // Generate star icons
+                let starsHtml = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= rating) {
+                        starsHtml +=
+                            '<i class="bi bi-star-fill" style="color: #f59e0b; font-size: 1.5rem;"></i> ';
+                    } else {
+                        starsHtml +=
+                            '<i class="bi bi-star" style="color: #d1d5db; font-size: 1.5rem;"></i> ';
+                    }
+                }
+
+                Swal.fire({
+                    title: 'Detail Rating & Review',
+                    html: `
+                <div class="text-start">
+                    <div class="mb-3 pb-3 border-bottom">
+                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                            <i class="bi bi-person-fill me-2"></i>Kandidat
+                        </label>
+                        <p class="mb-0 fs-5 fw-semibold">${candidateName}</p>
+                    </div>
+
+                    <div class="mb-3 pb-3 border-bottom">
+                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                            <i class="bi bi-star-fill me-2"></i>Rating yang Diberikan
+                        </label>
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <div>${starsHtml}</div>
+                            <span class="badge bg-warning text-dark fs-6 px-3 py-2">${rating}/5</span>
+                        </div>
+                    </div>
+
+                    ${review ? `
+                                <div class="mb-3 pb-3 border-bottom">
+                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                        <i class="bi bi-chat-quote-fill me-2"></i>Review
+                                    </label>
+                                    <div class="p-3 bg-light rounded mt-2">
+                                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${review}</p>
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                    ${feedbacks ? `
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                    </label>
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        ${feedbacks.split(', ').map(fb => `
+                                    <span class="badge bg-primary px-3 py-2" style="font-size: 0.875rem;">
+                                        <i class="bi bi-tag-fill me-1"></i>${fb}
+                                    </span>
+                                `).join('')}
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                    </label>
+                                    <p class="text-muted mb-0 mt-2">
+                                        <i class="bi bi-info-circle me-2"></i>Tidak ada feedback yang dipilih
+                                    </p>
+                                </div>
+                            `}
+                </div>
+            `,
+                    width: '600px',
+                    confirmButtonText: '<i class="bi bi-x-circle me-2"></i>Tutup',
+                    confirmButtonColor: '#6c757d',
+                    showClass: {
+                        popup: 'animate__animated animate__fadeIn'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOut'
                     }
                 });
             });

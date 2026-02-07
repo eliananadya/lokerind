@@ -269,13 +269,6 @@
                                                         @endif
 
                                                         @if ($application->status == 'Finished')
-                                                            <div class="alert alert-success py-2 mb-2">
-                                                                <i class="bi bi-check-circle-fill me-1"></i>
-                                                                <small>Proses lamaran selesai</small>
-                                                            </div>
-                                                        @endif
-
-                                                        @if ($application->status == 'Finished')
                                                             @if ($application->rating_company)
                                                                 <div class="alert alert-success py-2 mb-0">
                                                                     <i class="bi bi-star-fill text-warning me-1"></i>
@@ -287,8 +280,7 @@
                                                                     class="btn btn-warning btn-sm w-100"
                                                                     data-bs-toggle="modal"
                                                                     data-bs-target="#ratingModal{{ $application->id }}">
-                                                                    <i class="bi bi-star-fill me-1"></i> Kasih Bintang (+10
-                                                                    Poin)
+                                                                    <i class="bi bi-star-fill me-1"></i> Kasih Bintang
                                                                 </button>
                                                             @endif
                                                         @endif
@@ -1979,11 +1971,11 @@
                                 <p class="mb-2">${companyName}</p>
                             </div>
                             ${jobTitle ? `
-                                                                            <div class="mb-3">
-                                                                                <label class="form-label fw-bold">Dari Lowongan:</label>
-                                                                                <p class="mb-2">${jobTitle}</p>
-                                                                            </div>
-                                                                        ` : ''}
+                                                                                    <div class="mb-3">
+                                                                                        <label class="form-label fw-bold">Dari Lowongan:</label>
+                                                                                        <p class="mb-2">${jobTitle}</p>
+                                                                                    </div>
+                                                                                ` : ''}
                             <div class="mb-3">
                                 <label for="block-reason" class="form-label fw-bold">
                                     Alasan Memblokir <span class="text-danger">*</span>

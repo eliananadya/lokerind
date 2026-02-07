@@ -451,5 +451,45 @@ class Applications extends Model
                 ]);
             }
         });
+        static::retrieved(function ($application) {
+            if ($application->status === 'Accepted') {
+                $application->checkAndAutoFinish();
+            }
+        });
+    }
+    public function checkAndAutoFinish()
+    {
+        // Load relasi jika belum
+        if (!$this->relationLoaded('jobPosting')) {
+            $this->load('jobPosting.jobDatess');
+        }
+
+        $jobPosting = $this->jobPosting;
+
+        // Cek apakah ada jadwal kerja
+        if (!$jobPosting || !$jobPosting->jobDatess || $jobPosting->jobDatess->isEmpty()) {
+            return;
+        }
+
+        // Ambil tanggal terakhir
+        $lastWorkDate = $jobPosting->jobDatess()->orderBy('date', 'desc')->first();
+
+        if (!$lastWorkDate) {
+            return;
+        }
+
+        // Cek apakah hari ini sudah melewati tanggal terakhir
+        if (now()->isAfter($lastWorkDate->date)) {
+            // Update tanpa trigger event lagi
+            $this->updateQuietly(['status' => 'Finished']);
+
+            Log::info('Application auto-finished', [
+                'application_id' => $this->id,
+                'candidate_id' => $this->candidates_id,
+                'job_posting_id' => $this->job_posting_id,
+                'last_work_date' => $lastWorkDate->date,
+                'finished_at' => now()
+            ]);
+        }
     }
 }

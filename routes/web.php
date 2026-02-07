@@ -205,7 +205,6 @@ Route::middleware(['auth', 'role:company'])->prefix('company')->name('company.')
     Route::post('/riwayat/report/{application}', [RiwayatCompanyController::class, 'reportReview'])->name('riwayat.report');
     Route::post('/riwayat/block/{application}', [RiwayatCompanyController::class, 'blockUser'])->name('riwayat.block');
 
-
     // Profile
     Route::get('/profile', [ProfileCompanyController::class, 'index'])->name('profile');
     Route::post('/profile/update', [ProfileCompanyController::class, 'update'])->name('profile.update');
