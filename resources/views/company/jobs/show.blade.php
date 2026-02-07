@@ -533,7 +533,7 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('company.jobs.index') }}" class="btn btn-light">
+                    <a href="{{ route('company.dashboard') }}" class="btn btn-light">
                         <i class="bi bi-arrow-left me-2"></i>Kembali
                     </a>
                 </div>

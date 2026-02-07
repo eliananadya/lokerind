@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+
 
 class JobPostings extends Model
 {
@@ -175,5 +177,24 @@ class JobPostings extends Model
         }
 
         return false;
+    }
+    public function checkAndAutoClose()
+    {
+        // 1️⃣ Cek job_dates
+        $hasCloseDate = \DB::table('job_dates')
+            ->where('job_posting_id', $this->id)
+            ->whereDate('date', '<=', now()) // jika tanggal <= sekarang
+            ->exists();
+
+        // 2️⃣ Cek close_recruitment di job_postings
+        $isPastCloseRecruitment = $this->close_recruitment && $this->close_recruitment <= now();
+
+        // Jika salah satu terpenuhi dan status masih Open
+        if ($this->status === 'Open' && ($hasCloseDate || $isPastCloseRecruitment)) {
+            $this->status = 'Closed';
+            $this->save();
+
+            \Log::info("JobPosting ID {$this->id} auto-closed.");
+        }
     }
 }

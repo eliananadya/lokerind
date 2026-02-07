@@ -69,7 +69,7 @@
                             </a>
                         </li> --}}
                         <li class="nav-item mx-2">
-                            <a class="nav-link {{ request()->is('dashboard/riwayat*') ? 'active' : '' }}"
+                            <a class="nav-link {{ request()->routeIs('company.riwayat.index') ? 'active' : '' }}"
                                 href="{{ route('company.riwayat.index') }}">Riwayat</a>
                         </li>
                         {{-- <li class="nav-item mx-2">

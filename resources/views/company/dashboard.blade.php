@@ -1,547 +1,454 @@
 @extends('layouts.main')
 
-@section('title', 'Dashboard Company')
-
-<style>
-    /* Badge withdrawn */
-    .badge-withdrawn {
-        background: linear-gradient(135deg, #6c757d 0%, #343a40 100%);
-        color: white;
-        padding: 8px 16px;
-        font-size: 14px;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-
-    /* Badge interviewed */
-    .badge-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 16px;
-        font-size: 14px;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-
-    /* Badge not interviewed */
-    .badge-secondary {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        color: white;
-        padding: 8px 16px;
-        font-size: 14px;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-
-    /* Clickable row styling */
-    .clickable-row {
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .clickable-row:hover {
-        background-color: rgba(13, 110, 253, 0.05) !important;
-        transform: translateX(5px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .clickable-row:active {
-        transform: translateX(3px);
-    }
-
-    /* Prevent text selection on double click */
-    .clickable-row {
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-    }
-
-    .progress {
-        background-color: #e9ecef;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .tooltip-inner {
-        max-width: 280px;
-        text-align: left;
-        padding: 0.75rem;
-        background-color: #2c3e50;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    .tooltip-inner hr {
-        border-color: rgba(255, 255, 255, 0.2);
-        margin: 0.5rem 0;
-    }
-
-    .tooltip-arrow::before {
-        border-top-color: #2c3e50 !important;
-    }
-
-    /* ========== SLOT INDICATOR ========== */
-    .progress {
-        background-color: #e9ecef;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-
-    .progress-bar {
-        transition: width 0.6s ease;
-        background: linear-gradient(90deg,
-                rgba(255, 255, 255, 0.1) 0%,
-                rgba(255, 255, 255, 0) 100%);
-    }
-
-    /* Slot badge styling */
-    .badge.bg-success {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    }
-
-    .badge.bg-info {
-        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
-    }
-
-    .badge.bg-warning {
-        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
-    }
-
-    .badge.bg-danger {
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-    }
-
-    /* Badge hover effect */
-    .badge {
-        transition: all 0.3s ease;
-        cursor: help;
-    }
-
-    .badge:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .progress-bar {
-        transition: width 0.6s ease;
-    }
-
-    /* Slot badge styling */
-    .badge.bg-success {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    }
-
-    .badge.bg-warning {
-        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
-    }
-
-    .badge.bg-danger {
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-    }
-
-    /* Table cell alignment */
-    td .d-flex.flex-column {
-        gap: 0.25rem;
-    }
-
-    :root {
-        --primary-blue: #14489b;
-        --secondary-blue: #244770;
-        --dark-blue: #1e3992;
-        --light-blue: #dbeafe;
-        --bg-blue: #eff6ff;
-    }
-
-    .table-hover tbody tr {
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-        transform: scale(1.01);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .avatar-circle {
-        width: 45px;
-        height: 45px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    /* ========== BADGE STYLING ========== */
-    .badge {
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border-radius: 8px;
-    }
-
-    .badge-pending {
-        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-        color: #000;
-    }
-
-    .badge-accepted {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: #fff;
-    }
-
-    .badge-rejected {
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        color: #fff;
-    }
-
-    .badge-withdrawn {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        color: #fff;
-    }
-
-    .badge-finished {
-        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        color: #fff;
-    }
-
-    .badge-invited {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        color: #fff;
-    }
-
-    /* ========== MODAL CONTENT ========== */
-    .candidate-profile-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 15px;
-        margin-bottom: 2rem;
-    }
-
-    .candidate-photo {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        border: 5px solid rgba(255, 255, 255, 0.3);
-        object-fit: cover;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    .info-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 1.5rem;
-        border-left: 4px solid #667eea;
-    }
-
-    .info-card h5 {
-        color: #667eea;
-        font-weight: 700;
-        margin-bottom: 1rem;
-    }
-
-    .status-selector {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 2px solid #e9ecef;
-    }
-
-    /* ========== ACTION BUTTONS ========== */
-    .action-btn {
-        transition: all 0.3s ease;
-    }
-
-    .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    /* ========== EMPTY STATE ========== */
-    .empty-state {
-        padding: 3rem 1rem;
-        text-align: center;
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        color: #dee2e6;
-        margin-bottom: 1rem;
-    }
-
-    body {
-        background-color: #f8f9fa;
-    }
-
-    /* Header Styles */
-    .dashboard-header {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        color: white;
-        padding: 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 12px rgba(20, 72, 155, 0.3);
-    }
-
-    /* Stat Cards */
-    .stat-card {
-        background: white;
-        border-radius: 12px;
-        border-left: 4px solid var(--primary-blue);
-        transition: all 0.3s;
-        border: 1px solid #e5e7eb;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    }
-
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.5rem;
-    }
-
-    /* Badges */
-    .badge-status {
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 600;
-    }
-
-    .badge-pending {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: white;
-    }
-
-    .badge-accepted {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-    }
-
-    .badge-rejected {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-    }
-
-    .badge-finished {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
-    }
-
-    /* ✅ TAMBAHKAN INI */
-    .badge-withdrawn {
-        background: linear-gradient(135deg, #6b7280, #4b5563);
-        color: white;
-    }
-
-    .badge-invited {
-        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        color: white;
-    }
-
-
-    /* Tabs */
-    .nav-tabs {
-        border-bottom: 2px solid #e5e7eb;
-    }
-
-    .nav-tabs .nav-link {
-        color: #6b7280;
-        border: none;
-        border-bottom: 3px solid transparent;
-        transition: all 0.3s;
-        font-weight: 600;
-        padding: 1rem 1.5rem;
-    }
-
-    .nav-tabs .nav-link:hover {
-        color: var(--primary-blue);
-        background: var(--bg-blue);
-        border-radius: 8px 8px 0 0;
-    }
-
-    .nav-tabs .nav-link.active {
-        color: var(--primary-blue);
-        border-bottom-color: var(--primary-blue);
-        background: transparent;
-    }
-
-    .nav-tabs .nav-link .badge {
-        margin-left: 0.5rem;
-    }
-
-    /* Table */
-    .table thead th {
-        background: linear-gradient(135deg, var(--bg-blue), var(--light-blue));
-        color: var(--primary-blue);
-        font-weight: 700;
-        border: none;
-        padding: 1rem;
-        text-transform: uppercase;
-        font-size: 0.875rem;
-        letter-spacing: 0.5px;
-    }
-
-    .table tbody tr {
-        transition: all 0.2s;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .table tbody tr:hover {
-        background-color: var(--bg-blue);
-        transform: scale(1.01);
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    /* Table Loading Overlay */
-    .table-loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.95);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 100;
-        border-radius: 8px;
-        backdrop-filter: blur(4px);
-    }
-
-    .table-loading-overlay .spinner-border {
-        width: 3rem;
-        height: 3rem;
-        border-width: 0.4rem;
-        border-color: var(--primary-blue);
-        border-right-color: transparent;
-    }
-
-    .table-loading-text {
-        margin-top: 1rem;
-        color: var(--primary-blue);
-        font-weight: 600;
-        font-size: 1rem;
-    }
-
-    /* Table Container */
-    .table-container {
-        position: relative;
-        min-height: 400px;
-    }
-
-    /* Animations */
-    .fade-in {
-        animation: fadeIn 0.5s ease-in;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
+@section('content')
+
+    <style>
+        .badge-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            border: 2px solid;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
         }
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        .badge-approved {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border-color: #1d4ed8;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }
-    }
 
-    /* Avatar */
-    .avatar-circle {
-        width: 45px;
-        height: 45px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        box-shadow: 0 4px 8px rgba(20, 72, 155, 0.3);
-    }
+        .badge-rejected-verification {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border-color: #b91c1c;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
 
-    /* Buttons */
-    .btn-primary-custom {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        border: none;
-        color: white;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s;
-        box-shadow: 0 4px 8px rgba(20, 72, 155, 0.2);
-    }
+        .badge-pending-verification {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border-color: #b45309;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
 
-    .btn-primary-custom:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(20, 72, 155, 0.3);
-    }
+        /* Badge withdrawn */
+        .badge-withdrawn {
+            background: linear-gradient(135deg, #6c757d 0%, #343a40 100%);
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
 
-    /* Filter Section */
-    .filter-section {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
+        /* Badge interviewed */
+        .badge-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
 
-    /* Empty State */
-    .empty-state {
-        padding: 4rem 2rem;
-        text-align: center;
-    }
+        /* Badge not interviewed */
+        .badge-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
 
-    .empty-state i {
-        font-size: 4rem;
-        color: #d1d5db;
-        margin-bottom: 1rem;
-    }
+        /* Clickable row styling */
+        .clickable-row {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
 
-    /* Card */
-    .card {
-        border-radius: 12px;
-        border: none;
-    }
+        /* Prevent text selection on double click */
+        .clickable-row {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
 
-    /* Pagination */
-    .pagination .page-link {
-        color: var(--primary-blue);
-        border-color: #e5e7eb;
-        transition: all 0.2s;
-    }
+        .progress {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
 
-    .pagination .page-link:hover {
-        background-color: var(--light-blue);
-        transform: translateY(-2px);
-    }
+        .tooltip-inner {
+            max-width: 280px;
+            text-align: left;
+            padding: 0.75rem;
+            background-color: #2c3e50;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
 
-    .pagination .page-item.active .page-link {
-        background-color: var(--primary-blue);
-        border-color: var(--primary-blue);
-    }
-</style>
+        .tooltip-inner hr {
+            border-color: rgba(255, 255, 255, 0.2);
+            margin: 0.5rem 0;
+        }
+
+        .tooltip-arrow::before {
+            border-top-color: #2c3e50 !important;
+        }
+
+        /* ========== SLOT INDICATOR ========== */
+        .progress {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+            background: linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.1) 0%,
+                    rgba(255, 255, 255, 0) 100%);
+        }
+
+        /* Slot badge styling */
+        .badge.bg-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        }
+
+        .badge.bg-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
+        }
+
+        .badge.bg-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
+        }
+
+        .badge.bg-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+        }
+
+        .badge {
+            transition: all 0.3s ease;
+            cursor: help;
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+
+        /* Table cell alignment */
+        td .d-flex.flex-column {
+            gap: 0.25rem;
+        }
+
+        .avatar-circle {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* ========== BADGE STYLING ========== */
+
+        .badge {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: #000;
+        }
+
+        .badge-accepted {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: #fff;
+        }
+
+        .badge-rejected {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: #fff;
+        }
+
+        .badge-withdrawn {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: #fff;
+        }
+
+        .badge-finished {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: #fff;
+        }
+
+        .badge-invited {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: #fff;
+        }
+
+        /* ========== MODAL CONTENT ========== */
+        .candidate-profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .candidate-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            object-fit: cover;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-card h5 {
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .status-selector {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+        }
+
+        /* ========== ACTION BUTTONS ========== */
+        .action-btn {
+            transition: all 0.3s ease;
+        }
+
+        /* ========== EMPTY STATE ========== */
+        .empty-state {
+            padding: 3rem 1rem;
+            text-align: center;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 1rem;
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        /* Header Styles */
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(20, 72, 155, 0.3);
+        }
+
+        /* Stat Cards */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-blue);
+            transition: all 0.3s;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        /* Badges */
+        .badge-status {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .badge-accepted {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .badge-rejected {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .badge-finished {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .badge-withdrawn {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .badge-invited {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+
+        /* Tabs */
+        .nav-tabs {
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .nav-tabs .nav-link {
+            color: #6b7280;
+            border: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-blue);
+            border-bottom-color: var(--primary-blue);
+            background: transparent;
+        }
+
+        .nav-tabs .nav-link .badge {
+            margin-left: 0.5rem;
+        }
+
+        /* Table */
+        .table thead th {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+            font-weight: 700;
+            border: none;
+            padding: 1rem;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+
+        .table-loading-text {
+            margin-top: 1rem;
+            color: var(--primary-blue);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        /* Table Container */
+        .table-container {
+            position: relative;
+            min-height: 400px;
+        }
+
+        /* Avatar */
+        .avatar-circle {
+            width: 45px;
+            height: 45px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            box-shadow: 0 4px 8px rgba(20, 72, 155, 0.3);
+        }
+
+        /* Buttons */
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(20, 72, 155, 0.2);
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+
+        /* Card */
+        .card {
+            border-radius: 12px;
+            border: none;
+        }
+
+        /* Pagination */
+        .pagination .page-link {
+            color: var(--primary-blue);
+            border-color: #e5e7eb;
+            transition: all 0.2s;
+        }
+    </style>
 
 @section('content')
     <div class="container-fluid py-4">
@@ -593,7 +500,7 @@
                             <i class="bi bi-check-circle"></i>
                         </div>
                         <div>
-                            <h6 class="text-muted mb-1">Diterima</h6>
+                            <h6 class="text-muted mb-1">Kandidat Diterima</h6>
                             <h2 class="fw-bold mb-0 text-primary" id="statAccepted">0</h2>
                         </div>
                     </div>
@@ -620,21 +527,29 @@
                 <!-- Search & Filter -->
                 <div class="filter-section">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <div class="input-group">
                                 <span class="input-group-text bg-white">
                                     <i class="bi bi-search"></i>
                                 </span>
-                                <input type="text" class="form-control" placeholder="Cari lowongan atau pelamar..."
-                                    id="searchInput">
+                                <input type="text" class="form-control" placeholder="Cari lowongan" id="searchInput">
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <select class="form-select" id="filterStatus">
-                                <option value="">Filter Status</option>
+                                <option value="">Semua Status</option>
                                 <option value="Open">Open</option>
                                 <option value="Closed">Closed</option>
                                 <option value="Draft">Draft</option>
+                            </select>
+                        </div>
+                        <!-- ✅ BARU: Filter Verification Status -->
+                        <div class="col-md-2">
+                            <select class="form-select" id="filterVerification">
+                                <option value="">Semua Verifikasi</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Rejected">Rejected</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -657,12 +572,13 @@
                                 <table class="table table-hover align-middle mb-0">
                                     <thead>
                                         <tr>
-                                            <th><i class="bi bi-briefcase me-2"></i>Posisi</th>
+                                            <th><i class="bi bi-briefcase me-2"></i>Judul</th>
                                             <th><i class="bi bi-geo-alt me-2"></i>Lokasi</th>
                                             <th><i class="bi bi-calendar me-2"></i>Tanggal</th>
                                             <th><i class="bi bi-people me-2"></i>Pelamar</th>
                                             <th><i class="bi bi-person-check me-2"></i>Slot</th>
                                             <th><i class="bi bi-toggle-on me-2"></i>Status</th>
+                                            <th><i class="bi bi-shield-check me-2"></i>Verifikasi</th>
                                             <th class="text-center"><i class="bi bi-gear me-2"></i>Aksi</th>
                                         </tr>
                                     </thead>
@@ -730,15 +646,6 @@
                                 </div>
 
                                 <div class="modal-body" id="candidateDetailContent">
-                                    {{-- Loading State --}}
-                                    <div class="text-center py-5" id="detailLoading">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                        <p class="text-muted mt-3">Memuat detail kandidat...</p>
-                                    </div>
-
-                                    {{-- Content akan di-load via AJAX --}}
                                     <div id="detailContent" style="display: none;"></div>
                                 </div>
 
@@ -824,7 +731,6 @@
                                             <th><i class="bi bi-briefcase me-2"></i>Posisi</th>
                                             <th><i class="bi bi-calendar me-2"></i>Tanggal</th>
                                             <th class="text-center"><i class="bi bi-gear me-2"></i>Aksi</th>
-                                            <!-- ✅ Tambahkan ini -->
                                         </tr>
                                     </thead>
                                     <tbody id="tableDitolakBody"></tbody>
@@ -979,33 +885,17 @@
                 notInterviewed: parseInt(localStorage.getItem('dashboard_page_not_interviewed')) || 1,
                 accepted: parseInt(localStorage.getItem('dashboard_page_accepted')) || 1,
                 rejected: parseInt(localStorage.getItem('dashboard_page_rejected')) || 1,
-                withdrawn: parseInt(localStorage.getItem('dashboard_page_withdrawn')) || 1, // ✅ BARU
+                withdrawn: parseInt(localStorage.getItem('dashboard_page_withdrawn')) || 1,
                 finished: parseInt(localStorage.getItem('dashboard_page_finished')) || 1
             },
             searchQuery: '',
             statusFilter: '',
+            verificationFilter: '',
             sortBy: 'newest'
         };
 
-
-        // ========== SHOW LOADING ==========
-        function showTableLoading(containerId) {
-            $(`#${containerId}`).append(`
-            <div class="table-loading-overlay">
-                <div class="spinner-border"></div>
-                <div class="table-loading-text">Memuat data...</div>
-            </div>
-        `);
-        }
-
-        function hideTableLoading() {
-            $('.table-loading-overlay').fadeOut(200, function() {
-                $(this).remove();
-            });
-        }
         // ========== LOAD WITHDRAWN (MENGUNDURKAN DIRI) ==========
         function loadWithdrawnApplicants(page = 1) {
-            showTableLoading('tableContainerWithdrawn');
             state.currentPage.withdrawn = page;
             localStorage.setItem('dashboard_page_withdrawn', page);
 
@@ -1021,7 +911,6 @@
                 success: function(response) {
                     console.log('✅ Withdrawn response:', response);
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderWithdrawnTable(response);
                             if (response.pagination) {
@@ -1032,7 +921,7 @@
                 },
                 error: function(xhr, status, error) {
                     console.error('❌ Error loading withdrawn:', xhr);
-                    hideTableLoading();
+
                     showError('Gagal memuat data: ' + (xhr.responseJSON?.message || error));
                 }
             });
@@ -1135,9 +1024,16 @@
 
         // ========== LOAD ALL JOBS ==========
         function loadAllJobs(page = 1) {
-            showTableLoading('tableContainerSemua');
             state.currentPage.semua = page;
             localStorage.setItem('dashboard_page_semua', page);
+
+            console.log('🔍 Loading jobs with filters:', {
+                page: page,
+                search: state.searchQuery,
+                status: state.statusFilter,
+                verification_status: state.verificationFilter, // ✅ Debug log
+                sort: state.sortBy
+            });
 
             $.ajax({
                 url: '{{ route('company.dashboard.jobs') }}',
@@ -1146,11 +1042,11 @@
                     page: page,
                     search: state.searchQuery,
                     status: state.statusFilter,
+                    verification_status: state.verificationFilter,
                     sort: state.sortBy
                 },
                 success: function(response) {
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderJobsTable(response);
                             if (response.pagination) {
@@ -1159,8 +1055,8 @@
                         }
                     }, 300);
                 },
-                error: function() {
-                    hideTableLoading();
+                error: function(xhr) {
+                    console.error('❌ Error loading jobs:', xhr);
                     showError('Gagal memuat data');
                 }
             });
@@ -1173,7 +1069,7 @@
             if (data.length === 0) {
                 html = `
             <tr>
-                <td colspan="7" class="empty-state">
+                <td colspan="8" class="empty-state">
                     <i class="bi bi-inbox"></i>
                     <h5 class="text-muted fw-bold mt-2">Belum ada lowongan</h5>
                     <p class="text-muted">Mulai buat lowongan pekerjaan pertama Anda</p>
@@ -1217,6 +1113,8 @@
                         </span>
                     </td>
                     <td>${getStatusBadge(job.status)}</td>
+                    <!-- ✅ TAMBAHKAN KOLOM VERIFIKASI -->
+                    <td>${getVerificationBadge(job.verification_status)}</td>
                     <td class="text-center">
                         <a href="/company/jobs/${job.id}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye"></i> Detail
@@ -1340,7 +1238,6 @@
 
         // ========== LOAD INVITED ==========
         function loadInvitedApplicants(page = 1) {
-            showTableLoading('tableContainerPelamar');
             state.currentPage.pelamar = page;
             localStorage.setItem('dashboard_page_pelamar', page);
 
@@ -1352,7 +1249,6 @@
                 },
                 success: function(response) {
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderInvitedTable(response);
                             if (response.pagination) {
@@ -1362,7 +1258,6 @@
                     }, 300);
                 },
                 error: function() {
-                    hideTableLoading();
                     showError('Gagal memuat data');
                 }
             });
@@ -1482,7 +1377,6 @@
 
         // ========== LOAD PENDING ==========
         function loadPendingApplicants(page = 1) {
-            showTableLoading('tableContainerPending');
             state.currentPage.pending = page;
             localStorage.setItem('dashboard_page_pending', page);
 
@@ -1495,7 +1389,6 @@
                 success: function(response) {
                     console.log('✅ Pending response:', response);
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderPendingTable(response);
                             if (response.pagination) {
@@ -1506,7 +1399,7 @@
                 },
                 error: function(xhr) {
                     console.error('❌ Error loading pending:', xhr);
-                    hideTableLoading();
+
                     showError('Gagal memuat data');
                 }
             });
@@ -1575,7 +1468,6 @@
 
         // ========== LOAD INTERVIEWED (TELAH INTERVIEW) ==========
         function loadInterviewedApplicants(page = 1) {
-            showTableLoading('tableContainerInterviewed');
             state.currentPage.interviewed = page;
             localStorage.setItem('dashboard_page_interviewed', page);
 
@@ -1591,7 +1483,7 @@
                 success: function(response) {
                     console.log('✅ Interviewed response:', response);
                     setTimeout(() => {
-                        hideTableLoading();
+
                         if (response.success) {
                             renderInterviewedTable(response);
                             if (response.pagination) {
@@ -1602,7 +1494,7 @@
                 },
                 error: function(xhr, status, error) {
                     console.error('❌ Error loading interviewed:', xhr);
-                    hideTableLoading();
+
                     showError('Gagal memuat data: ' + (xhr.responseJSON?.message || error));
                 }
             });
@@ -1679,7 +1571,6 @@
 
         // ========== LOAD NOT INTERVIEWED (BELUM INTERVIEW) ==========
         function loadNotInterviewedApplicants(page = 1) {
-            showTableLoading('tableContainerNotInterviewed');
             state.currentPage.notInterviewed = page;
             localStorage.setItem('dashboard_page_not_interviewed', page);
 
@@ -1695,7 +1586,7 @@
                 success: function(response) {
                     console.log('✅ Not interviewed response:', response);
                     setTimeout(() => {
-                        hideTableLoading();
+
                         if (response.success) {
                             renderNotInterviewedTable(response);
                             if (response.pagination) {
@@ -1707,7 +1598,6 @@
                 },
                 error: function(xhr, status, error) {
                     console.error('❌ Error loading not interviewed:', xhr);
-                    hideTableLoading();
                     showError('Gagal memuat data: ' + (xhr.responseJSON?.message || error));
                 }
             });
@@ -2197,7 +2087,6 @@
 
         // ========== LOAD ACCEPTED ==========
         function loadAcceptedApplicants(page = 1) {
-            showTableLoading('tableContainerDiterima');
             state.currentPage.accepted = page;
             localStorage.setItem('dashboard_page_accepted', page);
 
@@ -2209,7 +2098,6 @@
                 },
                 success: function(response) {
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderAcceptedTable(response);
                             if (response.pagination) {
@@ -2219,7 +2107,6 @@
                     }, 300);
                 },
                 error: function() {
-                    hideTableLoading();
                     showError('Gagal memuat data');
                 }
             });
@@ -2282,7 +2169,6 @@
 
         // ========== LOAD REJECTED ==========
         function loadRejectedApplicants(page = 1) {
-            showTableLoading('tableContainerDitolak');
             state.currentPage.rejected = page;
             localStorage.setItem('dashboard_page_rejected', page);
 
@@ -2294,7 +2180,6 @@
                 },
                 success: function(response) {
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderRejectedTable(response);
                             if (response.pagination) {
@@ -2304,7 +2189,6 @@
                     }, 300);
                 },
                 error: function() {
-                    hideTableLoading();
                     showError('Gagal memuat data');
                 }
             });
@@ -2420,7 +2304,6 @@
 
         // ========== LOAD FINISHED ==========
         function loadFinishedApplicants(page = 1) {
-            showTableLoading('tableContainerFinished');
             state.currentPage.finished = page;
             localStorage.setItem('dashboard_page_finished', page);
 
@@ -2435,7 +2318,6 @@
                 success: function(response) {
                     console.log('✅ Finished response:', response);
                     setTimeout(() => {
-                        hideTableLoading();
                         if (response.success) {
                             renderFinishedTable(response);
                             if (response.pagination) {
@@ -2452,7 +2334,6 @@
                         responseJSON: xhr.responseJSON,
                         error: error
                     });
-                    hideTableLoading();
                     showError('Gagal memuat data: ' + (xhr.responseJSON?.message || error));
                 }
             });
@@ -2588,20 +2469,45 @@
         // ========== SEARCH & FILTER ==========
         $('#searchInput').on('keyup', debounce(function() {
             state.searchQuery = $(this).val();
-            if (state.currentTab === 'semua') loadAllJobs(1);
+            console.log('🔍 Search query:', state.searchQuery);
+            if (state.currentTab === 'semua') {
+                loadAllJobs(1);
+            }
         }, 500));
 
         $('#filterStatus').on('change', function() {
             state.statusFilter = $(this).val();
-            if (state.currentTab === 'semua') loadAllJobs(1);
+            console.log('📊 Status filter:', state.statusFilter);
+            if (state.currentTab === 'semua') {
+                loadAllJobs(1);
+            }
         });
 
+        $('#filterVerification').on('change', function() {
+            state.verificationFilter = $(this).val();
+            console.log('🛡️ Verification filter:', state.verificationFilter); // Debug log
+            if (state.currentTab === 'semua') {
+                loadAllJobs(1);
+            }
+        });
         $('#sortBy').on('change', function() {
             state.sortBy = $(this).val();
-            if (state.currentTab === 'semua') loadAllJobs(1);
+            console.log('🔄 Sort by:', state.sortBy);
+            if (state.currentTab === 'semua') {
+                loadAllJobs(1);
+            }
         });
 
         // ========== HELPER FUNCTIONS ==========
+        function getVerificationBadge(status) {
+            const badges = {
+                'Approved': '<span class="badge badge-approved badge-status"><i class="bi bi-shield-check me-1"></i>Approved</span>',
+                'Rejected': '<span class="badge badge-rejected-verification badge-status"><i class="bi bi-shield-x me-1"></i>Rejected</span>',
+                'Pending': '<span class="badge badge-pending-verification badge-status"><i class="bi bi-clock me-1"></i>Pending</span>'
+            };
+            return badges[status] || '<span class="badge bg-secondary badge-status">Unknown</span>';
+        }
+
         function renderPagination(pagination, container, callback) {
             if (!pagination || pagination.last_page <= 1) {
                 $(container).empty();

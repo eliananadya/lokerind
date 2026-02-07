@@ -31,20 +31,13 @@ class DashboardCompanyController extends Controller
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
-                Log::warning('Company not found for user', ['user_id' => $user->id]);
                 return redirect()->route('company.profile.create')
                     ->with('info', 'Lengkapi profil perusahaan Anda terlebih dahulu.');
             }
-
-            Log::info('Dashboard accessed', ['company_id' => $company->id, 'user_id' => $user->id]);
-
             return view('company.dashboard', compact('company'));
         } catch (\Exception $e) {
             Log::error('Dashboard index error', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'message' => $e->getMessage()
             ]);
 
             return redirect()->route('home')->with('error', 'Terjadi kesalahan saat memuat dashboard.');
@@ -58,8 +51,6 @@ class DashboardCompanyController extends Controller
     {
         try {
             $user = Auth::user();
-            Log::info('Loading stats', ['user_id' => $user->id]);
-
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
@@ -79,15 +70,17 @@ class DashboardCompanyController extends Controller
                 $query->where('companies_id', $company->id);
             })->where('status', 'Accepted')->count();
 
-            $pending = Applications::whereHas('jobPosting', function ($query) use ($company) {
-                $query->where('companies_id', $company->id);
-            })->whereIn('status', ['Applied', 'Reviewed', 'Interview'])->count();
+            // ✅ FIXED: Count from job_postings where verification_status = 'pending'
+            $pending = JobPostings::where('companies_id', $company->id)
+                ->where('verification_status', 'pending')
+                ->count();
 
-            Log::info('Stats loaded successfully', [
+            Log::info('Dashboard stats loaded', [
+                'company_id' => $company->id,
                 'total_jobs' => $totalJobs,
                 'total_applicants' => $totalApplicants,
                 'accepted' => $accepted,
-                'pending' => $pending
+                'pending_verification' => $pending
             ]);
 
             return response()->json([
@@ -119,24 +112,22 @@ class DashboardCompanyController extends Controller
     {
         try {
             $user = Auth::user();
-            Log::info('Loading all jobs', [
-                'user_id' => $user->id,
-                'search' => $request->search,
-                'status' => $request->status,
-                'sort' => $request->sort
-            ]);
-
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
             }
 
+            //  Check and close expired jobs
+            JobPostings::where('companies_id', $company->id)
+                ->where('status', 'Open')
+                ->get()
+                ->each(function ($job) {
+                    $job->checkAndAutoClose();
+                });
+
             $query = JobPostings::where('companies_id', $company->id)
-                ->with(['city', 'industry', 'typeJobs', 'applications']);
+                ->with(['city', 'industry', 'applications']);
 
             // Search
             if ($request->has('search') && $request->search) {
@@ -148,32 +139,33 @@ class DashboardCompanyController extends Controller
                 $query->where('status', $request->status);
             }
 
-            // Sorting
+            // ✅ BARU: Filter by verification status
+            if ($request->has('verification_status') && $request->verification_status) {
+                $query->where('verification_status', $request->verification_status);
+            }
+
+            // Sort
             $sort = $request->get('sort', 'newest');
-            switch ($sort) {
-                case 'oldest':
-                    $query->orderBy('created_at', 'asc');
-                    break;
-                case 'title':
-                    $query->orderBy('title', 'asc');
-                    break;
-                default:
-                    $query->orderBy('created_at', 'desc');
+            if ($sort === 'oldest') {
+                $query->orderBy('created_at', 'asc');
+            } else {
+                $query->orderBy('created_at', 'desc');
             }
 
             $jobs = $query->paginate(10);
 
-            // ✅ AMBIL LANGSUNG DARI KOLOM 'slot' DI DATABASE
             $jobs->getCollection()->transform(function ($job) {
                 $job->total_applicants = $job->applications->count();
-                // ✅ Slot langsung dari database
                 $job->slot_available = $job->slot ?? 0;
+                $job->verification_status = $job->verification_status ?? 'Pending';
                 return $job;
             });
 
-            Log::info('Jobs loaded successfully', [
+            Log::info('Jobs loaded for company', [
+                'company_id' => $company->id,
                 'total' => $jobs->total(),
-                'current_page' => $jobs->currentPage()
+                'page' => $jobs->currentPage(),
+                'verification_filter' => $request->verification_status
             ]);
 
             return response()->json([
@@ -191,17 +183,43 @@ class DashboardCompanyController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load jobs'
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to load jobs'], 500);
         }
     }
-    /**
-     * ✅ GET PENDING APPLICANTS
-     */
-    // ✅ Get Withdrawn Applicants (Mengundurkan Diri)
+
+    public function getPendingApplicants(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $company = Companies::where('user_id', $user->id)->first();
+
+            if (!$company) {
+                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
+            }
+
+            $query = Applications::with(['candidate.user', 'jobPosting.company', 'jobPosting.city'])
+                ->whereHas('jobPosting', function ($q) use ($company) {
+                    $q->where('companies_id', $company->id);
+                })
+                ->where('status', 'Applied');
+
+            $applicants = $query->orderBy('created_at', 'desc')->paginate(10);
+
+            return response()->json([
+                'success' => true,
+                'data' => $applicants->items(),
+                'pagination' => [
+                    'current_page' => $applicants->currentPage(),
+                    'last_page' => $applicants->lastPage(),
+                    'per_page' => $applicants->perPage(),
+                    'total' => $applicants->total()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading pending applicants', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed'], 500);
+        }
+    }
     public function getWithdrawnApplicants(Request $request)
     {
         try {
@@ -310,58 +328,6 @@ class DashboardCompanyController extends Controller
         }
     }
 
-    public function getPendingApplicants(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            $company = Companies::where('user_id', $user->id)->first();
-
-            if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
-            }
-
-            Log::info('Loading pending applicants', ['company_id' => $company->id]);
-
-            $query = Applications::with([
-                'candidate.user',
-                'jobPosting.company',
-                'jobPosting.city'
-            ])
-                ->whereHas('jobPosting', function ($q) use ($company) {
-                    $q->where('companies_id', $company->id);
-                })
-                ->whereIn('status', ['Applied', 'Reviewed', 'Interview', 'Pending']);
-
-            $applicants = $query->orderBy('applied_at', 'desc')->paginate(10);
-
-            Log::info('Pending applicants loaded', ['total' => $applicants->total()]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $applicants->items(),
-                'pagination' => [
-                    'current_page' => $applicants->currentPage(),
-                    'last_page' => $applicants->lastPage(),
-                    'per_page' => $applicants->perPage(),
-                    'total' => $applicants->total()
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error loading pending applicants', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load pending applicants'
-            ], 500);
-        }
-    }
-
     /**
      * ✅ GET ACCEPTED APPLICANTS
      */
@@ -372,17 +338,10 @@ class DashboardCompanyController extends Controller
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
             }
 
-            $query = Applications::with([
-                'candidate.user',
-                'jobPosting.company',
-                'jobPosting.city'
-            ])
+            $query = Applications::with(['candidate.user', 'jobPosting.company', 'jobPosting.city'])
                 ->whereHas('jobPosting', function ($q) use ($company) {
                     $q->where('companies_id', $company->id);
                 })
@@ -401,14 +360,8 @@ class DashboardCompanyController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error loading accepted applicants', [
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load accepted applicants'
-            ], 500);
+            Log::error('Error loading accepted applicants', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed'], 500);
         }
     }
 
@@ -422,17 +375,10 @@ class DashboardCompanyController extends Controller
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
             }
 
-            $query = Applications::with([
-                'candidate.user',
-                'jobPosting.company',
-                'jobPosting.city'
-            ])
+            $query = Applications::with(['candidate.user', 'jobPosting.company', 'jobPosting.city'])
                 ->whereHas('jobPosting', function ($q) use ($company) {
                     $q->where('companies_id', $company->id);
                 })
@@ -451,17 +397,10 @@ class DashboardCompanyController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error loading rejected applicants', [
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load rejected applicants'
-            ], 500);
+            Log::error('Error loading rejected applicants', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed'], 500);
         }
     }
-
     /**
      * ✅ GET INVITED APPLICANTS
      */
@@ -556,58 +495,6 @@ class DashboardCompanyController extends Controller
         }
     }
 
-    // ✅ Get Not Interviewed Applicants (Belum Interview)
-    // public function getNotInterviewedApplicants(Request $request)
-    // {
-    //     try {
-    //         $user = Auth::user();
-    //         $company = Companies::where('user_id', $user->id)->firstOrFail();
-
-    //         Log::info('Loading not interviewed applicants for company: ' . $company->id);
-
-    //         $query = Applications::with([
-    //             'candidate.user',
-    //             'candidate.skills',
-    //             'jobPosting.city',
-    //             'jobPosting.company'
-    //         ])
-    //             ->whereHas('jobPosting', function ($q) use ($company) {
-    //                 $q->where('companies_id', $company->id)
-    //                     ->where('has_interview', true);
-    //             })
-    //             ->whereIn('status', ['Applied', 'Reviewed', 'Pending']);
-
-    //         // Search
-    //         if ($request->has('search') && $request->search) {
-    //             $search = $request->search;
-    //             $query->whereHas('candidate.user', function ($q) use ($search) {
-    //                 $q->where('name', 'like', "%{$search}%")
-    //                     ->orWhere('email', 'like', "%{$search}%");
-    //             });
-    //         }
-
-    //         $applications = $query->latest('applied_at')->paginate(10);
-
-    //         Log::info('Found ' . $applications->total() . ' not interviewed applicants');
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'data' => $applications->items(),
-    //             'pagination' => [
-    //                 'current_page' => $applications->currentPage(),
-    //                 'last_page' => $applications->lastPage(),
-    //                 'per_page' => $applications->perPage(),
-    //                 'total' => $applications->total(),
-    //             ]
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         Log::error('Error loading not interviewed applicants: ' . $e->getMessage());
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Gagal memuat data: ' . $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
     public function getNotInterviewedApplicants(Request $request)
     {
         try {
@@ -924,25 +811,13 @@ class DashboardCompanyController extends Controller
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
-                Log::warning('Company not found', ['user_id' => $user->id]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
             }
-
-            Log::info('Loading application detail', [
-                'application_id' => $id,
-                'company_id' => $company->id
-            ]);
 
             $application = Applications::with([
                 'candidate.user',
                 'candidate.skills',
                 'candidate.portofolios',
-                'candidate.preferredCities',
-                'candidate.preferredIndustries',
-                'candidate.preferredTypeJobs',
                 'jobPosting.company',
                 'jobPosting.city'
             ])
@@ -951,35 +826,13 @@ class DashboardCompanyController extends Controller
                 })
                 ->findOrFail($id);
 
-            Log::info('Application detail loaded', [
-                'application_id' => $id,
-                'candidate_name' => $application->candidate->user->name ?? 'Unknown'
-            ]);
-
             return response()->json([
                 'success' => true,
                 'data' => $application
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::warning('Application not found', [
-                'application_id' => $id
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Application not found'
-            ], 404);
         } catch (\Exception $e) {
-            Log::error('Error getting application detail', [
-                'application_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load application detail: ' . $e->getMessage()
-            ], 500);
+            Log::error('Error getting application detail', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed'], 500);
         }
     }
 
@@ -998,54 +851,32 @@ class DashboardCompanyController extends Controller
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
             }
 
             $application = Applications::whereHas('jobPosting', function ($query) use ($company) {
                 $query->where('companies_id', $company->id);
-            })
-                ->with(['jobPosting.company', 'jobPosting.city', 'candidate.user']) // ✅ Load relasi
-                ->findOrFail($id);
+            })->with('jobPosting')->findOrFail($id);
 
             $oldStatus = $application->status;
             $newStatus = $request->status;
 
-            // ✅ CEK JIKA STATUS BERUBAH MENJADI ACCEPTED
+            // Handle slot changes
             if ($newStatus === 'Accepted' && $oldStatus !== 'Accepted') {
                 $jobPosting = $application->jobPosting;
-
                 if ($jobPosting->slot <= 0) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Slot lowongan sudah penuh'
-                    ], 400);
+                    return response()->json(['success' => false, 'message' => 'Slot penuh'], 400);
                 }
-
                 $jobPosting->slot -= 1;
                 $jobPosting->save();
-
-                Log::info('Job posting slot decreased', [
-                    'job_posting_id' => $jobPosting->id,
-                    'remaining_slots' => $jobPosting->slot
-                ]);
             }
 
-            // ✅ JIKA STATUS BERUBAH DARI ACCEPTED KE STATUS LAIN, KEMBALIKAN SLOT
             if ($oldStatus === 'Accepted' && $newStatus !== 'Accepted') {
                 $jobPosting = $application->jobPosting;
                 $jobPosting->slot += 1;
                 $jobPosting->save();
-
-                Log::info('Job posting slot increased', [
-                    'job_posting_id' => $jobPosting->id,
-                    'remaining_slots' => $jobPosting->slot
-                ]);
             }
 
-            // ✅ UPDATE STATUS APPLICATION
             $application->status = $newStatus;
             $application->save();
 
@@ -1056,49 +887,17 @@ class DashboardCompanyController extends Controller
                 'company_id' => $company->id
             ]);
 
-            // ✅ KIRIM EMAIL NOTIFIKASI JIKA STATUS BERUBAH
-            if ($oldStatus !== $newStatus) {
-                try {
-                    $candidateEmail = $application->candidate->user->email;
-
-                    Mail::to($candidateEmail)->send(
-                        new ApplicationStatusUpdated($application, $oldStatus, $newStatus)
-                    );
-
-                    Log::info('Status update email sent', [
-                        'application_id' => $id,
-                        'email' => $candidateEmail,
-                        'old_status' => $oldStatus,
-                        'new_status' => $newStatus
-                    ]);
-                } catch (\Exception $e) {
-                    // Log error tapi jangan gagalkan proses update
-                    Log::error('Failed to send status update email', [
-                        'application_id' => $id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-
             return response()->json([
                 'success' => true,
-                'message' => 'Status berhasil diupdate dan email notifikasi telah dikirim',
-                'data' => [
-                    'application' => $application,
-                    'remaining_slots' => $application->jobPosting->slot
-                ]
+                'message' => 'Status berhasil diupdate',
+                'data' => ['application' => $application]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error updating application status', [
-                'application_id' => $id,
+            Log::error('Error updating status', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal update status: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed'], 500);
         }
     }
 }

@@ -70,6 +70,12 @@ class JobPostingController extends Controller
                 ->withCount('applications')
                 ->findOrFail($id);
 
+            // ✅ AUTO-CLOSE: Check if this job should be closed
+            $job->checkAndAutoClose();
+
+            // Refresh job data after potential status change
+            $job->refresh();
+
             return response()->json([
                 'success' => true,
                 'data' => $job
@@ -91,6 +97,14 @@ class JobPostingController extends Controller
         if (!$company) {
             return redirect()->route('company.profile')->with('info', 'Lengkapi profil perusahaan terlebih dahulu.');
         }
+
+        // ✅ AUTO-CLOSE: Check and close expired jobs
+        JobPostings::where('companies_id', $company->id)
+            ->where('status', 'Open')
+            ->get()
+            ->each(function ($job) {
+                $job->checkAndAutoClose();
+            });
 
         $query = JobPostings::where('companies_id', $company->id)
             ->with(['city', 'industry', 'typeJobs', 'applications']);
@@ -349,17 +363,24 @@ class JobPostingController extends Controller
             Log::info('Accessing job show with ID: ' . $id);
             $user = Auth::user();
             $company = Companies::where('user_id', $user->id)->first();
+
             if (!$company) {
                 Log::error('Company not found for user: ' . $user->id);
                 return redirect()->route('company.jobs.index')
                     ->with('error', 'Profil perusahaan tidak ditemukan.');
             }
+
             $job = JobPostings::find($id);
+
             if (!$job) {
                 Log::error('Job posting not found with ID: ' . $id);
                 return redirect()->route('company.jobs.index')
                     ->with('error', 'Lowongan pekerjaan tidak ditemukan.');
             }
+
+            // ✅ AUTO-CLOSE: Check if this job should be closed
+            $job->checkAndAutoClose();
+
             Log::info('Job found: ' . $job->id);
             return view('company.jobs.show', compact('job', 'company'));
         } catch (\Exception $e) {

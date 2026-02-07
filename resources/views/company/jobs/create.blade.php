@@ -348,7 +348,7 @@
                     <h3><i class="bi bi-plus-circle me-2"></i>Buat Lowongan Baru</h3>
                     <p class="mb-0 opacity-90">Isi formulir dengan lengkap untuk membuat lowongan pekerjaan</p>
                 </div>
-                <a href="{{ route('company.jobs.index') }}" class="btn btn-light">
+                <a href="{{ route('company.dashboard') }}" class="btn btn-light">
                     <i class="bi bi-arrow-left me-2"></i>Kembali
                 </a>
             </div>
@@ -874,13 +874,6 @@
 
     // --------- SUBMIT ---------
     function submitForm(status) {
-        Swal.fire({
-            title: 'Menyimpan...',
-            html: '<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>',
-            showConfirmButton: false,
-            allowOutsideClick: false
-        });
-
         const formData = new FormData($('#jobPostingForm')[0]);
         formData.append('status', status);
 
