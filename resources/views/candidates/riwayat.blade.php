@@ -219,7 +219,7 @@
                                                                 data-company-name="{{ $application->jobPosting->company->name ?? 'Company' }}"
                                                                 data-job-title="{{ $application->jobPosting->title ?? 'Job' }}">
                                                                 <i class="bi bi-check-circle me-1"></i>
-                                                                Terima Undangan (+10 Poin)
+                                                                Terima Undangan
                                                             </button>
                                                         @endif
 
@@ -251,36 +251,26 @@
                                                                 : false;
                                                         @endphp
 
-                                                        @if (!$isBlocked)
-                                                            <button type="button"
-                                                                class="btn btn-outline-dark btn-sm w-100 mb-2 block-company-btn-application"
-                                                                data-company-id="{{ $companyUserId }}"
-                                                                data-company-name="{{ $application->jobPosting->company->name ?? 'Company' }}"
-                                                                data-job-title="{{ $application->jobPosting->title ?? 'Job' }}">
-                                                                <i class="bi bi-shield-x me-1"></i>
-                                                                Blokir Perusahaan
-                                                            </button>
-                                                        @else
-                                                            <button type="button" class="btn btn-dark btn-sm w-100 mb-2"
-                                                                disabled>
-                                                                <i class="bi bi-shield-check me-1"></i>
-                                                                Sudah Diblokir
-                                                            </button>
-                                                        @endif
-
                                                         @if ($application->status == 'Finished')
                                                             @if ($application->rating_company)
-                                                                <div class="alert alert-success py-2 mb-0">
-                                                                    <i class="bi bi-star-fill text-warning me-1"></i>
-                                                                    <small>Anda sudah memberikan rating
-                                                                        {{ $application->rating_company }}/5</small>
-                                                                </div>
+                                                                <button type="button"
+                                                                    class="btn btn-success btn-sm w-100 mb-2 view-my-rating-btn"
+                                                                    data-application-id="{{ $application->id }}"
+                                                                    data-company-name="{{ $application->jobPosting->company->name ?? 'Company' }}"
+                                                                    data-rating="{{ $application->rating_company }}"
+                                                                    data-review="{{ $application->review_company ?? '' }}"
+                                                                    data-feedbacks="{{ $application->feedbackApplications->where('given_by', 'candidate')->pluck('feedback.name')->implode(', ') }}">
+                                                                    <i class="bi bi-eye me-1"></i>
+                                                                    Lihat Rating
+                                                                </button>
                                                             @else
                                                                 <button type="button"
-                                                                    class="btn btn-warning btn-sm w-100"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#ratingModal{{ $application->id }}">
-                                                                    <i class="bi bi-star-fill me-1"></i> Kasih Bintang
+                                                                    class="btn btn-warning btn-sm w-100 rate-company-btn"
+                                                                    data-application-id="{{ $application->id }}"
+                                                                    data-company-name="{{ $application->jobPosting->company->name ?? 'Company' }}"
+                                                                    data-job-title="{{ $application->jobPosting->title ?? 'Job' }}">
+                                                                    <i class="bi bi-star-fill me-1"></i>
+                                                                    Kasih Bintang
                                                                 </button>
                                                             @endif
                                                         @endif
@@ -535,100 +525,258 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- MY FEEDBACK Section -->
+                </div>
+                <!-- MY FEEDBACK Section -->
                 <div class="history-section" id="my-feedback-section" style="display: none;">
-                    @if ($feedbackApplicationsGivenByCandidate->count() > 0)
+                    <div class="card mb-4 border-warning">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3">
+                                <i class="bi bi-graph-up text-warning me-2"></i>Ringkasan Feedback & Rating Anda
+                            </h5>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-muted mb-2">
+                                    <i class="bi bi-star-fill text-warning me-2"></i>Average Rating
+                                </h6>
+                                <div class="d-flex align-items-center">
+                                    <div class="text-warning" style="font-size: 1.5rem;">
+                                        @for ($i = 1; $i <= 5; $i++)
+                                            <i
+                                                class="bi bi-star{{ $i <= round($feedbackSummary['average_rating']) ? '-fill' : '' }}"></i>
+                                        @endfor
+                                    </div>
+                                    <span
+                                        class="fs-3 fw-bold ms-3">{{ number_format($feedbackSummary['average_rating'], 1) }}</span>
+                                    <span class="text-muted ms-2">/ 5.0</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-muted mb-3">
+                                    <i class="bi bi-tags-fill text-info me-2"></i>Feedback dari Perusahaan
+                                </h6>
+                                <div class="row g-3">
+                                    @foreach ($feedbackSummary['feedback_counts'] as $fb)
+                                        <div class="col-md-6">
+                                            <div
+                                                class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-tag-fill text-info me-2"></i>
+                                                    <span>{{ $fb['name'] }}</span>
+                                                </div>
+                                                <span
+                                                    class="badge {{ $fb['count'] > 0 ? 'bg-success' : 'bg-secondary' }} px-3 py-2">
+                                                    {{ $fb['count'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @if ($feedbackApplicationsFromCompany->count() > 0)
                         <div class="mb-4">
                             <h4 class="fw-bold mb-3">
-                                <i class="bi bi-star text-warning me-2"></i>Feedback yang Saya Berikan
+                                <i class="bi bi-star text-warning me-2"></i>Feedback dari Perusahaan
                             </h4>
                             <div class="row g-3">
-                                @foreach ($feedbackApplicationsGivenByCandidate as $myFeedback)
+                                @foreach ($feedbackApplicationsFromCompany as $item)
+                                    @php
+                                        $application = $item->application;
+                                        $feedbacks = $item->feedbacks; // ✅ Collection of feedbacks
+                                        $job = $application->jobPosting ?? null;
+                                        $company = $job->company ?? null;
+                                        $companyUserId = $company->user_id ?? null;
+
+                                        // ✅ Check if already reported
+                                        $isReported = in_array($application->id, $reportedApplicationIds);
+
+                                        // ✅ Check if already blocked
+                                        $isBlocked = $companyUserId
+                                            ? \App\Models\Blacklist::where('user_id', Auth::id())
+                                                ->where('blocked_user_id', $companyUserId)
+                                                ->exists()
+                                            : false;
+                                    @endphp
+
                                     <div class="col-lg-6">
                                         <div class="card history-card rounded-3 h-100 border">
                                             <div class="card-body p-4">
+                                                {{-- Header Card --}}
                                                 <div class="d-flex align-items-start mb-3">
                                                     <div class="bg-warning rounded-circle me-3 bg-opacity-10 p-3">
                                                         <i class="bi bi-star-fill text-warning fs-4"></i>
                                                     </div>
                                                     <div class="flex-grow-1">
                                                         <h6 class="fw-bold mb-1">
-                                                            {{ $myFeedback->application->jobPosting->title ?? 'Job Title' }}
+                                                            {{ $job->title ?? 'Job Title' }}
                                                         </h6>
                                                         <p class="text-muted small mb-0">
                                                             <i
-                                                                class="bi bi-building me-1"></i>{{ $myFeedback->application->jobPosting->company->name ?? 'Company' }}
+                                                                class="bi bi-building me-1"></i>{{ $company->name ?? 'Company' }}
                                                         </p>
+                                                        <small class="text-muted">
+                                                            {{ $item->created_at->diffForHumans() }}
+                                                        </small>
                                                     </div>
-                                                    <small class="text-muted">
-                                                        {{ $myFeedback->created_at->diffForHumans() }}
-                                                    </small>
                                                 </div>
 
-                                                @if ($myFeedback->application->rating_company)
+                                                {{-- ✅ SEMUA Feedback Tags --}}
+                                                @if ($feedbacks->count() > 0)
                                                     <div class="mb-3">
-                                                        <div class="d-flex align-items-center">
-                                                            <span class="text-muted small me-2">Rating Anda:</span>
-                                                            <div class="text-warning">
-                                                                @for ($i = 1; $i <= 5; $i++)
-                                                                    @if ($i <= $myFeedback->application->rating_company)
-                                                                        <i class="bi bi-star-fill"></i>
-                                                                    @else
-                                                                        <i class="bi bi-star"></i>
-                                                                    @endif
-                                                                @endfor
-                                                                <span
-                                                                    class="text-dark ms-1">({{ $myFeedback->application->rating_company }}/5)</span>
-                                                            </div>
+                                                        <small class="text-muted d-block mb-2">
+                                                            <i class="bi bi-tag-fill me-1"></i>Feedback yang Diberikan
+                                                            ({{ $feedbacks->count() }})
+                                                            :
+                                                        </small>
+                                                        <div class="d-flex flex-wrap gap-2">
+                                                            @foreach ($feedbacks as $feedback)
+                                                                @if ($feedback->feedback)
+                                                                    <span class="badge bg-warning text-dark px-3 py-2">
+                                                                        <i
+                                                                            class="bi bi-tag-fill me-1"></i>{{ $feedback->feedback->name }}
+                                                                    </span>
+                                                                @endif
+                                                            @endforeach
                                                         </div>
                                                     </div>
                                                 @endif
 
-                                                @if ($myFeedback->application->review_company)
-                                                    <div class="bg-light mb-3 rounded p-3">
-                                                        <small class="text-muted d-block mb-2">
-                                                            <i class="bi bi-chat-quote me-1"></i>Review Anda:
-                                                        </small>
-                                                        <p class="small mb-0">
-                                                            {{ $myFeedback->application->review_company }}</p>
+                                                {{-- Rating & Review dari Company --}}
+                                                @if ($application->rating_candidates || $application->review_candidate)
+                                                    <div class="border-top pt-3 mb-3">
+                                                        <h6 class="fw-bold mb-2 text-primary">
+                                                            <i class="bi bi-star-fill me-1"></i>Rating & Review
+                                                        </h6>
+
+                                                        @if ($application->rating_candidates)
+                                                            <div class="mb-2">
+                                                                <div class="d-flex align-items-center">
+                                                                    <span class="text-muted small me-2">Rating:</span>
+                                                                    <div class="text-warning">
+                                                                        @for ($i = 1; $i <= 5; $i++)
+                                                                            <i
+                                                                                class="bi bi-star{{ $i <= $application->rating_candidates ? '-fill' : '' }}"></i>
+                                                                        @endfor
+                                                                        <span
+                                                                            class="text-dark ms-1 fw-bold">({{ $application->rating_candidates }}/5)</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if ($application->review_candidate)
+                                                            <div
+                                                                class="bg-light rounded p-3 border-start border-warning border-4">
+                                                                <small class="text-muted d-block mb-1">
+                                                                    <i class="bi bi-chat-quote me-1"></i>Review:
+                                                                </small>
+                                                                <p class="small mb-0">
+                                                                    "{{ $application->review_candidate }}"</p>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                 @endif
 
-                                                @if ($myFeedback->feedback)
-                                                    <div class="mb-3">
-                                                        <small class="text-muted d-block mb-2">Feedback yang
-                                                            Diberikan:</small>
-                                                        <span class="badge bg-info text-white">
-                                                            <i
-                                                                class="bi bi-tag-fill me-1"></i>{{ $myFeedback->feedback->name }}
-                                                        </span>
+                                                {{-- Info Aplikasi --}}
+                                                <div class="border-top pt-3 mb-3">
+                                                    <div class="row g-2">
+                                                        <div class="col-6">
+                                                            <small class="text-muted d-block">Status Lamaran:</small>
+                                                            @php
+                                                                $statusColors = [
+                                                                    'Applied' => 'secondary',
+                                                                    'Reviewed' => 'info',
+                                                                    'Interview' => 'warning',
+                                                                    'Accepted' => 'success',
+                                                                    'Rejected' => 'danger',
+                                                                    'Finished' => 'dark',
+                                                                ];
+                                                                $color =
+                                                                    $statusColors[$application->status] ?? 'secondary';
+                                                            @endphp
+                                                            <span
+                                                                class="badge bg-{{ $color }}">{{ $application->status }}</span>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <small class="text-muted d-block">Tanggal Melamar:</small>
+                                                            <small class="fw-bold">
+                                                                {{ $application->applied_at ? \Carbon\Carbon::parse($application->applied_at)->format('d M Y') : '-' }}
+                                                            </small>
+                                                        </div>
                                                     </div>
-                                                @endif
+                                                </div>
 
-                                                <div
-                                                    class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                                    <small class="text-muted">
-                                                        <i
-                                                            class="bi bi-calendar3 me-1"></i>{{ $myFeedback->created_at->format('d F Y, H:i') }}
-                                                    </small>
-                                                    <span class="badge bg-warning-subtle text-warning">
-                                                        <i class="bi bi-person me-1"></i>Anda
-                                                    </span>
+                                                {{-- Action Buttons --}}
+                                                <div class="border-top pt-3">
+                                                    {{-- View Detail --}}
+                                                    <button type="button"
+                                                        class="btn btn-outline-primary btn-sm w-100 mb-2 view-detail-btn"
+                                                        data-application-id="{{ $application->id }}"
+                                                        data-job-id="{{ $application->job_posting_id }}">
+                                                        <i class="bi bi-eye me-1"></i>Lihat Detail Lowongan
+                                                    </button>
+
+                                                    <div class="row g-2">
+                                                        {{-- Report Company --}}
+                                                        <div class="col-6">
+                                                            @if (!$isReported)
+                                                                <button type="button"
+                                                                    class="btn btn-outline-danger btn-sm w-100 report-company-btn-feedback"
+                                                                    data-application-id="{{ $application->id }}"
+                                                                    data-company-name="{{ $company->name ?? 'Company' }}"
+                                                                    data-job-title="{{ $job->title ?? 'Job' }}">
+                                                                    <i class="bi bi-flag-fill me-1"></i>Report
+                                                                </button>
+                                                            @else
+                                                                <button type="button"
+                                                                    class="btn btn-success btn-sm w-100" disabled>
+                                                                    <i class="bi bi-check-circle me-1"></i>Dilaporkan
+                                                                </button>
+                                                            @endif
+                                                        </div>
+
+                                                        {{-- Block Company --}}
+                                                        <div class="col-6">
+                                                            @if (!$isBlocked && $companyUserId)
+                                                                <button type="button"
+                                                                    class="btn btn-outline-dark btn-sm w-100 block-company-btn-feedback"
+                                                                    data-company-id="{{ $companyUserId }}"
+                                                                    data-company-name="{{ $company->name ?? 'Company' }}"
+                                                                    data-job-title="{{ $job->title ?? 'Job' }}">
+                                                                    <i class="bi bi-shield-x me-1"></i>Block
+                                                                </button>
+                                                            @else
+                                                                <button type="button" class="btn btn-dark btn-sm w-100"
+                                                                    disabled>
+                                                                    <i class="bi bi-shield-check me-1"></i>Diblokir
+                                                                </button>
+                                                            @endif
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
+
+                            {{-- Pagination --}}
                             <div class="d-flex justify-content-center mt-4">
-                                {{ $feedbackApplicationsGivenByCandidate->appends(['status' => request('status')])->links() }}
+                                {{ $feedbackApplicationsFromCompany->appends(['status' => request('status')])->links() }}
                             </div>
                         </div>
                     @else
                         <div class="py-5 text-center">
-                            <i class="bi bi-star text-muted" style="font-size: 4rem;"></i>
+                            <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
                             <h5 class="fw-bold mb-2 mt-3">Belum Ada Feedback</h5>
-                            <p class="text-muted">Anda belum memberikan feedback apapun</p>
+                            <p class="text-muted">
+                                @if (request('status'))
+                                    Tidak ada feedback dari perusahaan untuk status "{{ ucfirst(request('status')) }}"
+                                @else
+                                    Anda belum menerima feedback dari perusahaan manapun
+                                @endif
+                            </p>
                             <a href="{{ route('jobs.index') }}" class="btn btn-primary">
                                 <i class="bi bi-search me-2"></i>Cari Lowongan
                             </a>
@@ -1082,24 +1230,8 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="report-reason-select" class="form-label fw-bold">
-                            Kategori Laporan <span class="text-danger">*</span>
-                        </label>
-                        <select class="form-select" id="report-reason-select">
-                            <option value="">-- Pilih Kategori --</option>
-                            <option value="Review tidak sesuai">Review tidak sesuai dengan fakta</option>
-                            <option value="Konten tidak pantas">Konten tidak pantas atau menyinggung</option>
-                            <option value="Informasi palsu">Informasi palsu atau menyesatkan</option>
-                            <option value="Spam">Spam atau promosi tidak relevan</option>
-                            <option value="Diskriminasi">Diskriminasi (SARA, gender, dll)</option>
-                            <option value="Pelecehan">Pelecehan atau intimidasi</option>
-                            <option value="Lainnya">Lainnya</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
                         <label for="report-reason" class="form-label fw-bold">
-                            Detail Laporan <span class="text-danger">*</span>
+                            Alasan Laporan <span class="text-danger">*</span>
                         </label>
                         <textarea class="form-control" id="report-reason" rows="4"
                             placeholder="Jelaskan secara detail mengapa Anda melaporkan perusahaan ini..." maxlength="500"></textarea>
@@ -1734,26 +1866,15 @@
                         });
 
                         const data = await response.json();
-                        console.log('📥 Withdraw response:', data);
 
                         if (response.ok && data.success) {
-                            let html = `<p>${data.message}</p>`;
-
-                            if (data.data.penalty_applied > 0) {
-                                html += `
-                                <div class="alert alert-warning mt-3">
-                                    <strong>Poin Anda:</strong> ${data.data.old_point} → ${data.data.new_point}
-                                    <br><small>Penalty: -${data.data.penalty_applied} poin</small>
-                                </div>
-                            `;
-                            }
-
                             await Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil!',
-                                html: html,
+                                text: data.message,
                                 confirmButtonColor: '#28a745'
                             });
+
                             location.reload();
                         } else {
                             throw new Error(data.message || 'Gagal menarik lamaran');
@@ -1769,9 +1890,153 @@
                     }
                 });
             }
+            document.querySelectorAll('.block-company-btn-feedback').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const companyId = this.dataset.companyId;
+                    const companyName = this.dataset.companyName;
+                    const jobTitle = this.dataset.jobTitle || '';
 
+                    console.log('🚫 Block company clicked from feedback:', {
+                        companyId,
+                        companyName,
+                        jobTitle
+                    });
+
+                    if (!companyId) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Company ID tidak ditemukan',
+                            confirmButtonColor: '#dc3545'
+                        });
+                        return;
+                    }
+
+                    const {
+                        value: formValues
+                    } = await Swal.fire({
+                        title: 'Blokir Perusahaan?',
+                        html: `
+                <div class="text-start">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Perhatian!</strong> Setelah diblokir, Anda tidak akan melihat lowongan dari perusahaan ini lagi.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Perusahaan:</label>
+                        <p class="mb-2">${companyName}</p>
+                    </div>
+                    ${jobTitle ? `
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label fw-bold">Dari Lowongan:</label>
+                                                                        <p class="mb-2">${jobTitle}</p>
+                                                                    </div>
+                                                                ` : ''}
+                    <div class="mb-3">
+                        <label for="block-reason-feedback" class="form-label fw-bold">
+                            Alasan Memblokir <span class="text-danger">*</span>
+                        </label>
+                        <textarea
+                            id="block-reason-feedback"
+                            class="form-control"
+                            placeholder="Jelaskan alasan Anda memblokir perusahaan ini..."
+                            rows="4"
+                            required
+                        ></textarea>
+                        <small class="text-muted">Minimal 10 karakter</small>
+                    </div>
+                </div>
+            `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="bi bi-shield-x me-1"></i> Ya, Blokir',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true,
+                        width: '600px',
+                        preConfirm: () => {
+                            const reason = document.getElementById(
+                                'block-reason-feedback').value.trim();
+
+                            if (!reason) {
+                                Swal.showValidationMessage('Alasan wajib diisi!');
+                                return false;
+                            }
+
+                            if (reason.length < 10) {
+                                Swal.showValidationMessage(
+                                    'Alasan minimal 10 karakter!');
+                                return false;
+                            }
+
+                            return {
+                                reason: reason
+                            };
+                        }
+                    });
+
+                    if (!formValues) return;
+
+                    try {
+                        console.log('📤 Blocking company from feedback...', {
+                            companyId,
+                            reason: formValues.reason
+                        });
+
+                        const response = await fetch('{{ route('company.block') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                blocked_user_id: companyId,
+                                reason: formValues.reason,
+                                company_name: companyName,
+                                job_title: jobTitle
+                            })
+                        });
+
+                        const data = await response.json();
+                        console.log('📥 Block response:', data);
+
+                        if (response.ok && data.success) {
+                            await Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil Diblokir!',
+                                html: `
+                        <p>${data.message}</p>
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <small>Lowongan dari <strong>${companyName}</strong> tidak akan muncul lagi.</small>
+                        </div>
+                    `,
+                                confirmButtonColor: '#28a745',
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+
+                            location.reload();
+                        } else {
+                            throw new Error(data.message || 'Gagal memblokir perusahaan');
+                        }
+                    } catch (error) {
+                        console.error('❌ Block error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Memblokir',
+                            text: error.message ||
+                                'Terjadi kesalahan saat memblokir perusahaan',
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                });
+            });
             // ===== REPORT COMPANY =====
-            document.querySelectorAll('.report-company-btn').forEach(button => {
+            document.querySelectorAll('.report-company-btn, .report-company-btn-feedback').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1790,7 +2055,6 @@
                     document.getElementById('report-company-name').textContent = companyName;
                     document.getElementById('report-job-title').textContent = jobTitle;
                     document.getElementById('report-reason').value = '';
-                    document.getElementById('report-reason-select').value = '';
 
                     const counter = document.getElementById('char-count');
                     if (counter) counter.textContent = '0';
@@ -1798,22 +2062,6 @@
                     new bootstrap.Modal(document.getElementById('reportModal')).show();
                 });
             });
-
-            const reportReasonSelect = document.getElementById('report-reason-select');
-            if (reportReasonSelect) {
-                reportReasonSelect.addEventListener('change', function() {
-                    const selectedReason = this.value;
-                    const reasonTextarea = document.getElementById('report-reason');
-
-                    if (selectedReason && selectedReason !== 'Lainnya') {
-                        reasonTextarea.value = selectedReason + ': ';
-                        reasonTextarea.dispatchEvent(new Event('input'));
-                    } else if (selectedReason === 'Lainnya') {
-                        reasonTextarea.value = '';
-                        reasonTextarea.dispatchEvent(new Event('input'));
-                    }
-                });
-            }
 
             const submitReportBtn = document.getElementById('submit-report-btn');
             if (submitReportBtn) {
@@ -1971,11 +2219,11 @@
                                 <p class="mb-2">${companyName}</p>
                             </div>
                             ${jobTitle ? `
-                                                                                    <div class="mb-3">
-                                                                                        <label class="form-label fw-bold">Dari Lowongan:</label>
-                                                                                        <p class="mb-2">${jobTitle}</p>
-                                                                                    </div>
-                                                                                ` : ''}
+                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                    <label class="form-label fw-bold">Dari Lowongan:</label>
+                                                                                                                                                                                    <p class="mb-2">${jobTitle}</p>
+                                                                                                                                                                                </div>
+                                                                                                                                                                            ` : ''}
                             <div class="mb-3">
                                 <label for="block-reason" class="form-label fw-bold">
                                     Alasan Memblokir <span class="text-danger">*</span>
@@ -2186,6 +2434,279 @@
             });
 
             console.log('✅ All event listeners attached successfully');
+        });
+        // ✅ RATE COMPANY - Kasih Bintang
+        document.querySelectorAll('.rate-company-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const applicationId = this.dataset.applicationId;
+                const companyName = this.dataset.companyName;
+                const jobTitle = this.dataset.jobTitle;
+
+                const {
+                    value: formValues
+                } = await Swal.fire({
+                    title: 'Beri Rating & Review',
+                    html: `
+                <div class="text-start">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Perusahaan:</label>
+                        <p class="mb-0">${companyName}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Posisi:</label>
+                        <p class="mb-0">${jobTitle}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rating-company" class="form-label fw-bold">
+                            Rating <span class="text-danger">*</span>
+                        </label>
+                        <div class="star-rating" id="starRatingCompany">
+                            ${[1,2,3,4,5].map(star => `
+                                                                                                                        <i class="bi bi-star star-icon-company" data-rating="${star}" 
+                                                                                                                           style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
+                                                                                                                    `).join('')}
+                        </div>
+                        <input type="hidden" id="ratingCompanyValue" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="review-company" class="form-label fw-bold">Review (Opsional)</label>
+                        <textarea id="review-company" class="form-control" rows="4" 
+                                  placeholder="Tulis pengalaman Anda bekerja di perusahaan ini..." 
+                                  maxlength="1000"></textarea>
+                        <small class="text-muted">Maksimal 1000 karakter</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="feedbackCompanySelect" class="form-label fw-bold">Feedback (Opsional)</label>
+                        <select id="feedbackCompanySelect" class="form-control" multiple="multiple" style="width: 100%;">
+                            @foreach ($feedbacks->where('for', 'company') as $feedback)
+                                <option value="{{ $feedback->id }}">{{ $feedback->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Pilih satu atau lebih feedback</small>
+                    </div>
+                </div>
+            `,
+                    width: '600px',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-send me-2"></i>Kirim Rating',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#ffc107',
+                    cancelButtonColor: '#6c757d',
+                    didOpen: () => {
+                        // Initialize Select2
+                        $('#feedbackCompanySelect').select2({
+                            placeholder: 'Pilih feedback...',
+                            allowClear: true,
+                            closeOnSelect: false,
+                            dropdownParent: $('.swal2-popup'),
+                            language: {
+                                noResults: () => "Tidak ada hasil ditemukan",
+                                searching: () => "Mencari..."
+                            }
+                        });
+
+                        // Star rating functionality
+                        const stars = document.querySelectorAll('.star-icon-company');
+                        const ratingInput = document.getElementById('ratingCompanyValue');
+
+                        stars.forEach(star => {
+                            star.addEventListener('click', function() {
+                                const rating = this.dataset.rating;
+                                ratingInput.value = rating;
+
+                                stars.forEach((s, index) => {
+                                    if (index < rating) {
+                                        s.classList.remove(
+                                            'bi-star');
+                                        s.classList.add(
+                                            'bi-star-fill');
+                                        s.style.color = '#ffc107';
+                                    } else {
+                                        s.classList.remove(
+                                            'bi-star-fill');
+                                        s.classList.add('bi-star');
+                                        s.style.color = '#d1d5db';
+                                    }
+                                });
+                            });
+
+                            star.addEventListener('mouseenter', function() {
+                                const rating = this.dataset.rating;
+                                stars.forEach((s, index) => {
+                                    if (index < rating) {
+                                        s.style.color = '#ffc107';
+                                    }
+                                });
+                            });
+
+                            star.addEventListener('mouseleave', function() {
+                                const currentRating = ratingInput.value;
+                                stars.forEach((s, index) => {
+                                    if (index >= currentRating) {
+                                        s.style.color = '#d1d5db';
+                                    }
+                                });
+                            });
+                        });
+                    },
+                    didClose: () => {
+                        if ($('#feedbackCompanySelect').data('select2')) {
+                            $('#feedbackCompanySelect').select2('destroy');
+                        }
+                    },
+                    preConfirm: () => {
+                        const rating = document.getElementById('ratingCompanyValue').value;
+                        const review = document.getElementById('review-company').value
+                            .trim();
+                        const feedbacks = $('#feedbackCompanySelect').val() || [];
+
+                        if (rating == 0) {
+                            Swal.showValidationMessage('Rating wajib diisi!');
+                            return false;
+                        }
+
+                        return {
+                            rating,
+                            review,
+                            feedbacks
+                        };
+                    }
+                });
+
+                if (!formValues) return;
+                try {
+                    const response = await fetch(`/applications/${applicationId}/rate-company`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            rating_company: formValues.rating,
+                            review_company: formValues.review,
+                            feedbacks: formValues.feedbacks
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        let html = `<p>${data.message}</p>`;
+
+                        if (data.data.point_reward > 0) {
+                            html += `
+                        <div class="alert alert-success mt-3">
+                            <strong>Poin Anda:</strong> ${data.data.old_point} → ${data.data.new_point}
+                            <br><small>Reward: +${data.data.point_reward} poin</small>
+                        </div>
+                    `;
+                        }
+
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            html: html,
+                            confirmButtonColor: '#28a745'
+                        });
+
+                        location.reload();
+                    } else {
+                        throw new Error(data.message || 'Gagal mengirim rating');
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: error.message,
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            });
+        });
+
+        // VIEW MY RATING - Lihat Rating yang Sudah Diberikan
+        document.querySelectorAll('.view-my-rating-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const companyName = this.dataset.companyName;
+                const rating = this.dataset.rating;
+                const review = this.dataset.review;
+                const feedbacks = this.dataset.feedbacks;
+
+                let starsHtml = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= rating) {
+                        starsHtml +=
+                            '<i class="bi bi-star-fill" style="color: #ffc107; font-size: 1.5rem;"></i> ';
+                    } else {
+                        starsHtml +=
+                            '<i class="bi bi-star" style="color: #d1d5db; font-size: 1.5rem;"></i> ';
+                    }
+                }
+
+                Swal.fire({
+                    title: 'Rating Anda',
+                    html: `
+                <div class="text-start">
+                    <div class="mb-3 pb-3 border-bottom">
+                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                            <i class="bi bi-building me-2"></i>Perusahaan
+                        </label>
+                        <p class="mb-0 fs-5 fw-semibold">${companyName}</p>
+                    </div>
+
+                    <div class="mb-3 pb-3 border-bottom">
+                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                            <i class="bi bi-star-fill me-2"></i>Rating yang Anda Berikan
+                        </label>
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <div>${starsHtml}</div>
+                            <span class="badge bg-warning text-dark fs-6 px-3 py-2">${rating}/5</span>
+                        </div>
+                    </div>
+
+                    ${review ? `
+                                                                                                                <div class="mb-3 pb-3 border-bottom">
+                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                                        <i class="bi bi-chat-quote-fill me-2"></i>Review Anda
+                                                                                                                    </label>
+                                                                                                                    <div class="p-3 bg-light rounded mt-2">
+                                                                                                                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${review}</p>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            ` : ''}
+
+                    ${feedbacks ? `
+                                                                                                                <div class="mb-3">
+                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                                                                                                    </label>
+                                                                                                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                                                                                                        ${feedbacks.split(', ').map(fb => `
+                                    <span class="badge bg-warning px-3 py-2" style="font-size: 0.875rem;">
+                                        <i class="bi bi-tag-fill me-1"></i>${fb}
+                                    </span>
+                                `).join('')}
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            ` : `
+                                                                                                                <div class="mb-3">
+                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                                                                                                    </label>
+                                                                                                                    <p class="text-muted mb-0 mt-2">
+                                                                                                                        <i class="bi bi-info-circle me-2"></i>Tidak ada feedback yang dipilih
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                            `}
+                </div>
+            `,
+                    width: '600px',
+                    confirmButtonText: '<i class="bi bi-x-circle me-2"></i>Tutup',
+                    confirmButtonColor: '#6c757d'
+                });
+            });
         });
     </script>
 @endsection

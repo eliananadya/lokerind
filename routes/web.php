@@ -122,7 +122,8 @@ Route::middleware(['auth', 'role:user'])->group(function () {
     Route::post('/activity/unsubscribe-company', [CandidateRiwayatControlller::class, 'unsubscribeCompany'])->name('activity.unsubscribe');
     Route::post('/save-job-history', [CandidateRiwayatControlller::class, 'saveJob'])->name('save.job-history');
     Route::post('/unsave-job-history', [CandidateRiwayatControlller::class, 'unsaveJob'])->name('unsave.job-history');
-    // Tambahkan di dalam Route::middleware(['auth', 'role:user'])->group(function () {
+    Route::post('/applications/{id}/rate-company', [HistoryController::class, 'rateCompany'])
+        ->name('applications.rate.company');
 
     // Invitations
     Route::get('/invitations', [HistoryController::class, 'getInvitations'])->name('invitations.get');

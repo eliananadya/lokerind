@@ -45,9 +45,11 @@ class HistoryController extends Controller
                     'statusOptions' => $this->getDefaultStatuses(),
                     'ratingBreakdown' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],
                     'totalInvitations' => 0,
-                    'myReports' => collect([])
+                    'myReports' => collect([]),
+                    'feedbackSummary' => ['average_rating' => 0, 'feedback_counts' => []] // ✅ TAMBAHKAN INI
                 ])->with('info', 'Lengkapi profil Anda untuk melihat riwayat lengkap.');
             }
+
             $myReports = Reports::where('user_id', $user->id)
                 ->with([
                     'application' => function ($q) {
@@ -68,6 +70,7 @@ class HistoryController extends Controller
                 ])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10, ['*'], 'myreports_page');
+
             $reportedApplicationIds = Reports::where('user_id', $user->id)
                 ->pluck('application_id')
                 ->toArray();
@@ -139,7 +142,8 @@ class HistoryController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10, ['*'], 'ratings_page');
 
-            $feedbackApplicationsFromCompany = FeedbackApplication::whereHas('application', function ($q) use ($candidate, $statusFilter) {
+            // ✅ FEEDBACK FROM COMPANY - Grouped by application
+            $feedbackQuery = FeedbackApplication::whereHas('application', function ($q) use ($candidate, $statusFilter) {
                 $q->where('candidates_id', $candidate->id);
                 if ($statusFilter) {
                     $q->where('status', $statusFilter);
@@ -147,12 +151,37 @@ class HistoryController extends Controller
             })
                 ->where('given_by', 'company')
                 ->with([
-                    'application.jobPosting.company',
+                    'application.jobPosting.company.user',
                     'application.jobPosting.typeJobs',
+                    'application.jobPosting.city',
                     'feedback'
                 ])
                 ->orderBy('created_at', 'desc')
-                ->paginate(10, ['*'], 'feedback_page');
+                ->get();
+
+            // ✅ Group by application_id
+            $groupedFeedbacks = $feedbackQuery->groupBy('application_id');
+
+            $feedbackApplicationsFromCompany = $groupedFeedbacks->map(function ($feedbacks, $applicationId) {
+                $firstFeedback = $feedbacks->first();
+
+                return (object) [
+                    'application' => $firstFeedback->application,
+                    'feedbacks' => $feedbacks,
+                    'created_at' => $feedbacks->max('created_at'),
+                ];
+            })->sortByDesc('created_at')->values();
+
+            // ✅ Manual pagination untuk grouped feedback
+            $perPageFeedback = 10;
+            $currentPageFeedback = $request->get('feedback_page', 1);
+            $feedbackApplicationsFromCompany = new \Illuminate\Pagination\LengthAwarePaginator(
+                $feedbackApplicationsFromCompany->forPage($currentPageFeedback, $perPageFeedback),
+                $feedbackApplicationsFromCompany->count(),
+                $perPageFeedback,
+                $currentPageFeedback,
+                ['path' => $request->url(), 'pageName' => 'feedback_page']
+            );
 
             $feedbackApplicationsGivenByCandidate = FeedbackApplication::whereHas('application', function ($q) use ($candidate, $statusFilter) {
                 $q->where('candidates_id', $candidate->id);
@@ -187,19 +216,20 @@ class HistoryController extends Controller
 
             $allItemsCollection = $this->buildAllItemsCollection($candidate, $statusFilter);
 
-            $perPage = 10;
-            $currentPage = $request->get('all_page', 1);
+            // ✅ Pagination untuk All Items (nama variabel berbeda)
+            $perPageAll = 10;
+            $currentPageAll = $request->get('all_page', 1);
             $allItems = new \Illuminate\Pagination\LengthAwarePaginator(
-                $allItemsCollection->forPage($currentPage, $perPage),
+                $allItemsCollection->forPage($currentPageAll, $perPageAll),
                 $allItemsCollection->count(),
-                $perPage,
-                $currentPage,
+                $perPageAll,
+                $currentPageAll,
                 ['path' => $request->url(), 'pageName' => 'all_page']
             );
 
             $feedbacks = Feedback::all();
             $statusOptions = $this->getApplicationStatuses();
-
+            $feedbackSummary = $this->getCandidateFeedbackSummary($candidate->id);
             return view('candidates.riwayat', compact(
                 'reports',
                 'applications',
@@ -217,11 +247,56 @@ class HistoryController extends Controller
                 'ratingBreakdown',
                 'totalInvitations',
                 'myReports',
+                'feedbackSummary',
             ));
         } catch (\Exception $e) {
             Log::error('History page error: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
             return redirect()->back()->with('error', 'Terjadi kesalahan saat memuat halaman riwayat.');
+        }
+    }
+
+    private function getCandidateFeedbackSummary($candidateId)
+    {
+        try {
+            // Hitung average rating kandidat
+            $averageRating = Applications::where('candidates_id', $candidateId)
+                ->whereNotNull('rating_candidates')
+                ->where('rating_candidates', '>=', 1)
+                ->where('rating_candidates', '<=', 5)
+                ->avg('rating_candidates');
+
+            // Ambil semua feedback untuk candidate
+            $candidateFeedbacks = Feedback::where('for', 'candidate')->get();
+
+            // Hitung total setiap feedback yang diberikan oleh company
+            $feedbackCounts = [];
+            foreach ($candidateFeedbacks as $feedback) {
+                $count = FeedbackApplication::where('feedback_id', $feedback->id)
+                    ->where('given_by', 'company')
+                    ->whereHas('application', function ($q) use ($candidateId) {
+                        $q->where('candidates_id', $candidateId);
+                    })
+                    ->count();
+
+                $feedbackCounts[] = [
+                    'name' => $feedback->name,
+                    'count' => $count
+                ];
+            }
+
+            return [
+                'average_rating' => round($averageRating ?? 0, 1),
+                'feedback_counts' => $feedbackCounts
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error getting feedback summary: ' . $e->getMessage());
+
+            // Return default values jika error
+            return [
+                'average_rating' => 0,
+                'feedback_counts' => []
+            ];
         }
     }
 
@@ -570,17 +645,10 @@ class HistoryController extends Controller
             $company = $application->jobPosting->company;
             $this->updateCompanyAverageRating($company->id);
 
-            $pointReward = 10;
-            $oldPoint = $candidate->point ?? 0;
-            $newPoint = min(100, $oldPoint + $pointReward);
-
-            $candidate->update(['point' => $newPoint]);
 
             HistoryPoint::create([
                 'candidates_id' => $candidate->id,
                 'application_id' => $application->id,
-                'old_point' => $oldPoint,
-                'new_point' => $newPoint,
                 'reason' => 'rate_company'
             ]);
 
@@ -588,26 +656,109 @@ class HistoryController extends Controller
                 'candidate_id' => $candidate->id,
                 'application_id' => $application->id,
                 'rating' => $request->rating_company,
-                'point_reward' => $pointReward,
-                'old_point' => $oldPoint,
-                'new_point' => $newPoint
+            ]);
+
+            DB::commit();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Aplikasi tidak ditemukan.'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Rate company error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    public function rateCompany(Request $request, $id)
+    {
+        $request->validate([
+            'rating_company' => 'required|integer|min:1|max:5',
+            'review_company' => 'nullable|string|max:1000',
+            'feedbacks' => 'nullable|array',
+            'feedbacks.*' => 'exists:feedback,id'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $user = Auth::user();
+            $candidate = Candidates::where('user_id', $user->id)->first();
+
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Profil kandidat tidak ditemukan.'
+                ], 404);
+            }
+
+            $application = Applications::with('jobPosting.company')
+                ->where('id', $id)
+                ->where('candidates_id', $candidate->id)
+                ->firstOrFail();
+
+            // ✅ Validasi: Hanya status Finished yang bisa kasih rating
+            if ($application->status !== 'Finished') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rating hanya bisa diberikan untuk aplikasi dengan status "Finished".'
+                ], 422);
+            }
+
+            // ✅ Validasi: Cek apakah sudah pernah kasih rating
+            if ($application->rating_company) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah memberikan rating untuk perusahaan ini.'
+                ], 422);
+            }
+
+            // ✅ Update rating dan review
+            $application->update([
+                'rating_company' => $request->rating_company,
+                'review_company' => $request->review_company,
+            ]);
+
+            // ✅ Simpan feedback (jika ada)
+            if ($request->has('feedbacks') && is_array($request->feedbacks)) {
+                foreach ($request->feedbacks as $feedbackId) {
+                    FeedbackApplication::create([
+                        'given_by' => 'candidate',
+                        'feedback_id' => $feedbackId,
+                        'application_id' => $application->id,
+                    ]);
+                }
+            }
+
+            // ✅ Update average rating perusahaan
+            $this->updateCompanyAverageRating($application->jobPosting->companies_id);
+
+            // ✅ TIDAK ADA TAMBAHAN POIN - Hanya catat history
+            HistoryPoint::create([
+                'candidates_id' => $candidate->id,
+                'application_id' => $application->id,
+                'reason' => 'rate_company'
+            ]);
+
+            Log::info('Candidate rated company (no point reward)', [
+                'candidate_id' => $candidate->id,
+                'application_id' => $application->id,
+                'rating' => $request->rating_company,
             ]);
 
             DB::commit();
 
-            $actualReward = $newPoint - $oldPoint;
-            $message = $newPoint >= 100
-                ? "Terima kasih! Rating dan review Anda telah disimpan. Poin Anda sudah maksimal (100 poin)! 🎉"
-                : "Terima kasih! Rating dan review Anda telah disimpan. Anda mendapat +{$actualReward} poin! 🎉";
-
+            // ✅ RESPONSE JSON YANG BENAR
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => 'Terima kasih! Rating Anda telah tersimpan.',
                 'data' => [
-                    'old_point' => $oldPoint,
-                    'new_point' => $newPoint,
-                    'point_reward' => $actualReward,
-                    'is_max' => $newPoint >= 100
+                    'rating' => $request->rating_company,
+                    'review' => $request->review_company,
+                    'feedbacks_count' => count($request->feedbacks ?? [])
                 ]
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -633,8 +784,9 @@ class HistoryController extends Controller
         $averageRating = Applications::whereHas('jobPosting', function ($query) use ($companyId) {
             $query->where('companies_id', $companyId);
         })
-            ->where('status', 'Finished')
-            ->where('rating_company', '>', 0)
+            ->whereNotNull('rating_company')
+            ->where('rating_company', '>=', 1)
+            ->where('rating_company', '<=', 5)
             ->avg('rating_company');
 
         $company->update([
