@@ -64,13 +64,16 @@ class JobPostingController extends Controller
                 'typeJobs',
                 'company',
                 'skills',
-                'applications'
+                'applications',
+                'jobDatess'
             ])
                 ->where('companies_id', $company->id)
                 ->withCount('applications')
                 ->findOrFail($id);
 
-            // ✅ AUTO-CLOSE: Check if this job should be closed
+            // AUTO-OPEN: Check if draft should be opened
+            $job->checkAndAutoOpen();
+            // AUTO-CLOSE: Check if this job should be closed
             $job->checkAndAutoClose();
 
             // Refresh job data after potential status change
@@ -97,8 +100,15 @@ class JobPostingController extends Controller
         if (!$company) {
             return redirect()->route('company.profile')->with('info', 'Lengkapi profil perusahaan terlebih dahulu.');
         }
-
-        // ✅ AUTO-CLOSE: Check and close expired jobs
+        // AUTO-OPEN: Check and open draft jobs yang sudah valid
+        JobPostings::where('companies_id', $company->id)
+            ->where('status', 'Draft')
+            ->with('jobDatess')
+            ->get()
+            ->each(function ($job) {
+                $job->checkAndAutoOpen();
+            });
+        // AUTO-CLOSE: Check and close expired jobs
         JobPostings::where('companies_id', $company->id)
             ->where('status', 'Open')
             ->get()
@@ -254,7 +264,11 @@ class JobPostingController extends Controller
 
             $user = Auth::user();
             $company = Companies::where('user_id', $user->id)->firstOrFail();
-
+            Log::info('Creating job with status: ' . $request->status, [
+                'open_recruitment' => $request->open_recruitment,
+                'close_recruitment' => $request->close_recruitment,
+                'job_dates' => $request->job_dates
+            ]);
             DB::beginTransaction();
 
             // Create job posting
@@ -377,8 +391,9 @@ class JobPostingController extends Controller
                 return redirect()->route('company.jobs.index')
                     ->with('error', 'Lowongan pekerjaan tidak ditemukan.');
             }
-
-            // ✅ AUTO-CLOSE: Check if this job should be closed
+            // AUTO OPEN
+            $job->checkAndAutoOpen();
+            // AUTO-CLOSE
             $job->checkAndAutoClose();
 
             Log::info('Job found: ' . $job->id);
@@ -433,41 +448,171 @@ class JobPostingController extends Controller
         }
     }
 
-    public function updateApplicationStatus(Request $request, $applicationId)
+    public function updateApplicationStatus(Request $request, $id)
     {
         try {
+            Log::info('=== START UPDATE APPLICATION STATUS ===');
+            Log::info('Application ID: ' . $id);
+            Log::info('Request Data: ' . json_encode($request->all()));
+
             $user = Auth::user();
-            $company = Companies::where('user_id', $user->id)->firstOrFail();
+            if (!$user) {
+                Log::error('User not authenticated');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak terautentikasi'
+                ], 401);
+            }
 
-            // Get application and verify it belongs to company's job
-            $application = Applications::whereHas('job', function ($query) use ($company) {
-                $query->where('companies_id', $company->id);
-            })->findOrFail($applicationId);
+            $company = Companies::where('user_id', $user->id)->first();
+            if (!$company) {
+                Log::error('Company not found for user: ' . $user->id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perusahaan tidak ditemukan'
+                ], 404);
+            }
 
-            $validated = $request->validate([
-                'status' => 'required|in:Accepted,Rejected'
+            // Get application with eager loading
+            $application = Applications::with(['jobPosting', 'candidate'])
+                ->whereHas('jobPosting', function ($query) use ($company) {
+                    $query->where('companies_id', $company->id);
+                })
+                ->find($id);
+
+            if (!$application) {
+                Log::error('Application not found: ' . $id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lamaran tidak ditemukan'
+                ], 404);
+            }
+
+            $job = $application->jobPosting;
+            if (!$job) {
+                Log::error('Job posting not found for application: ' . $id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lowongan tidak ditemukan'
+                ], 404);
+            }
+
+            Log::info('Job ID: ' . $job->id . ', Status: ' . $job->status . ', Has Interview: ' . ($job->has_interview ? 'Yes' : 'No'));
+
+            // CHECK IF JOB IS CLOSED
+            if ($job->status === 'Closed') {
+                Log::warning('Job is closed, cannot update');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat mengubah status lamaran karena lowongan sudah ditutup.'
+                ], 403);
+            }
+
+            // VALIDATION
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:Selection,Accepted,Rejected',
+                'message' => 'nullable|string|max:1000'
             ]);
 
-            $application->update([
-                'status' => $validated['status']
-            ]);
+            if ($validator->fails()) {
+                Log::error('Validation failed: ' . json_encode($validator->errors()));
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validatedData = $validator->validated();
+            Log::info('Validated Data: ' . json_encode($validatedData));
+
+            // VALIDASI TAMBAHAN - Selection only for jobs with interview
+            if ($request->status === 'Selection' && !$job->has_interview) {
+                Log::warning('Selection not allowed for job without interview');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Status Selection tidak diperbolehkan untuk lowongan tanpa interview.'
+                ], 422);
+            }
+
+            // UPDATE APPLICATION STATUS
+            Log::info('Before update - Current status: ' . $application->status);
+
+            // ✅ PERBAIKAN: Pastikan message di-trim dan dibersihkan
+            $messageToSave = isset($validatedData['message']) && trim($validatedData['message']) !== ''
+                ? trim($validatedData['message'])
+                : null;
+
+            $updateData = [
+                'status' => $validatedData['status']
+            ];
+
+            // Only update message if it's not null
+            if ($messageToSave !== null) {
+                $updateData['message'] = $messageToSave;
+            }
+
+            $updated = $application->update($updateData);
+
+            if (!$updated) {
+                Log::error('Failed to update application');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui status lamaran'
+                ], 500);
+            }
+
+            // Refresh the model to get updated data
+            $application->refresh();
+
+            Log::info('After update - New status: ' . $application->status);
+            Log::info('=== UPDATE SUCCESS ===');
+
+            $statusMessages = [
+                'Selection' => 'Kandidat berhasil dipilih untuk tahap seleksi/interview!',
+                'Accepted' => 'Kandidat berhasil diterima!',
+                'Rejected' => 'Kandidat berhasil ditolak.'
+            ];
 
             return response()->json([
                 'success' => true,
-                'message' => $validated['status'] == 'Accepted' ?
-                    'Kandidat berhasil diterima!' :
-                    'Kandidat berhasil ditolak.',
-                'status' => $validated['status']
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Update application status error: ' . $e->getMessage());
+                'message' => $statusMessages[$validatedData['status']] ?? 'Status berhasil diperbarui',
+                'status' => $application->status,
+                'data' => [
+                    'application_id' => $application->id,
+                    'new_status' => $application->status,
+                    'message' => $application->message
+                ]
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('=== MODEL NOT FOUND ERROR ===');
+            Log::error('Message: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memproses.'
+                'message' => 'Data tidak ditemukan'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('=== VALIDATION ERROR ===');
+            Log::error('Validation errors: ' . json_encode($e->errors()));
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('=== EXCEPTION ERROR ===');
+            Log::error('Message: ' . $e->getMessage());
+            Log::error('File: ' . $e->getFile());
+            Log::error('Line: ' . $e->getLine());
+            Log::error('Trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
-
     /**
      * Update the specified job posting in storage
      */

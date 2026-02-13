@@ -159,7 +159,46 @@ class JobPostings extends Model
 
         return Carbon::parse($lastJobDate->date)->addDay();
     }
+    public function checkAndAutoOpen()
+    {
+        // Hanya proses jika status Draft
+        if ($this->status !== 'Draft') {
+            return false;
+        }
 
+        $today = Carbon::today();
+        $openDate = Carbon::parse($this->open_recruitment);
+
+        // Ambil tanggal jadwal kerja paling awal
+        $earliestJobDate = $this->jobDatess()
+            ->orderBy('date', 'asc')
+            ->first();
+
+        if (!$earliestJobDate) {
+            return false;
+        }
+
+        $earliestWorkDate = Carbon::parse($earliestJobDate->date);
+
+        // ✅ LOGIC AUTO-OPEN:
+        // 1. Tanggal buka >= jadwal kerja pertama (valid)
+        // 2. Hari ini >= tanggal buka (sudah saatnya dibuka)
+        if ($openDate->greaterThanOrEqualTo($earliestWorkDate) && $today->greaterThanOrEqualTo($openDate)) {
+            $this->update(['status' => 'Open']);
+
+            \Log::info('✅ AUTO-OPEN: Draft job changed to Open', [
+                'job_id' => $this->id,
+                'title' => $this->title,
+                'open_date' => $openDate->toDateString(),
+                'earliest_work_date' => $earliestWorkDate->toDateString(),
+                'today' => $today->toDateString()
+            ]);
+
+            return true;
+        }
+
+        return false;
+    }
     public function autoCloseIfNeeded()
     {
         if ($this->shouldBeClosed()) {

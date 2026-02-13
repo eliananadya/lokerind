@@ -496,19 +496,6 @@
             <div class="col-md-3 col-sm-6">
                 <div class="card stat-card shadow-sm h-100">
                     <div class="card-body d-flex align-items-center">
-                        <div class="stat-icon me-3" style="background: linear-gradient(135deg, #3b82f6, #2563eb)">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div>
-                            <h6 class="text-muted mb-1">Kandidat Diterima</h6>
-                            <h2 class="fw-bold mb-0 text-primary" id="statAccepted">0</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="card stat-card shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center">
                         <div class="stat-icon me-3" style="background: linear-gradient(135deg, #f59e0b, #d97706)">
                             <i class="bi bi-clock"></i>
                         </div>
@@ -1015,7 +1002,6 @@
                     if (response.success) {
                         $('#statTotalJobs').text(response.data.total_jobs);
                         $('#statTotalApplicants').text(response.data.total_applicants);
-                        $('#statAccepted').text(response.data.accepted);
                         $('#statPending').text(response.data.pending);
                     }
                 }

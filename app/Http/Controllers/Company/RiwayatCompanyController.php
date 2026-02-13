@@ -35,6 +35,7 @@ class RiwayatCompanyController extends Controller
 
             $statusFilter = $request->get('status');
             $searchFilter = $request->get('search');
+
             // Base query untuk semua tab
             $baseQuery = Applications::whereHas('jobPosting', function ($query) use ($company) {
                 $query->where('companies_id', $company->id);
@@ -48,8 +49,14 @@ class RiwayatCompanyController extends Controller
                     $q->where('title', 'like', "%{$searchFilter}%");
                 });
             }
-            // Tab 1: Applications - HANYA STATUS FINISHED
-            $applications = (clone $baseQuery) // ✅ Filter hanya Finished
+
+            // ✅ TAMBAHKAN: Get reported application IDs oleh company ini
+            $reportedApplicationIds = Reports::where('user_id', $user->id)
+                ->pluck('application_id')
+                ->toArray();
+
+            // Tab 1: Applications - dengan withdraw_reason
+            $applications = (clone $baseQuery)
                 ->with([
                     'candidate.user',
                     'jobPosting.typeJobs',
@@ -58,14 +65,15 @@ class RiwayatCompanyController extends Controller
                         $q->with('feedback');
                     }
                 ])
+                ->select(['*'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10, ['*'], 'apps_page');
 
-            // Tab 2: Rating dan Review - HANYA YANG ADA RATING (1-5)
+            // Tab 2: Rating dan Review
             $ratingsFromCandidates = (clone $baseQuery)
                 ->whereNotNull('rating_company')
-                ->where('rating_company', '>=', 1) // ✅ Rating minimal 1
-                ->where('rating_company', '<=', 5) // ✅ Rating maksimal 5
+                ->where('rating_company', '>=', 1)
+                ->where('rating_company', '<=', 5)
                 ->with([
                     'candidate.user',
                     'jobPosting.typeJobs',
@@ -74,7 +82,7 @@ class RiwayatCompanyController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10, ['*'], 'ratings_page');
 
-            // Tab 3: Reviews - HANYA YANG ADA REVIEW TEXT
+            // Tab 3: Reviews
             $reviewsFromCandidates = (clone $baseQuery)
                 ->whereNotNull('review_company')
                 ->where('review_company', '!=', '')
@@ -86,7 +94,7 @@ class RiwayatCompanyController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10, ['*'], 'reviews_page');
 
-            // Tab 4: Report - Review yang bisa dilaporkan
+            // Tab 4: Report
             $reviewsToReport = (clone $baseQuery)
                 ->whereNotNull('review_company')
                 ->where('review_company', '!=', '')
@@ -99,7 +107,23 @@ class RiwayatCompanyController extends Controller
                     }
                 ])
                 ->orderBy('updated_at', 'desc')
-                ->paginate(10, ['*'], 'reports_page');
+                ->paginate(10, ['*'], 'reviewsToReport_page');
+
+            // Tab 5: My Reports
+            $myReports = Reports::where('user_id', $user->id)
+                ->with([
+                    'application.candidate.user',
+                    'application.jobPosting.typeJobs',
+                    'application.jobPosting.city'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->paginate(10, ['*'], 'myReports_page');
+
+            // Tab 6: Blacklist
+            $blacklistedCandidates = Blacklist::where('user_id', $user->id)
+                ->with(['blockedUser.candidate'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(10, ['*'], 'blacklist_page');
 
             // Stats
             $stats = [
@@ -112,13 +136,11 @@ class RiwayatCompanyController extends Controller
                 'total_reviews' => Applications::whereHas('jobPosting', fn($q) => $q->where('companies_id', $company->id))->whereNotNull('review_company')->where('review_company', '!=', '')->count(),
             ];
 
-            // ✅ Ambil feedback untuk CANDIDATE saja (bukan company)
             $feedbacks = Feedback::where('for', 'candidate')
                 ->where('is_active', true)
                 ->orderBy('name', 'asc')
                 ->get();
 
-            // Blacklist users
             $blacklistedUsers = Blacklist::where('user_id', $user->id)
                 ->pluck('blocked_user_id')
                 ->toArray();
@@ -128,12 +150,15 @@ class RiwayatCompanyController extends Controller
                 'ratingsFromCandidates',
                 'reviewsFromCandidates',
                 'reviewsToReport',
+                'myReports',
+                'blacklistedCandidates',
                 'company',
                 'stats',
                 'feedbacks',
                 'statusFilter',
                 'searchFilter',
-                'blacklistedUsers'
+                'blacklistedUsers',
+                'reportedApplicationIds' // ✅ TAMBAHKAN INI
             ));
         } catch (\Exception $e) {
             Log::error('Company History Error: ' . $e->getMessage());
@@ -167,7 +192,7 @@ class RiwayatCompanyController extends Controller
 
             Reports::create([
                 'reason' => $request->reason,
-                'status' => 'Pending',
+                'status' => 'pending', // ✅ lowercase 'pending'
                 'application_id' => $applicationId,
                 'user_id' => $user->id,
             ]);
@@ -229,6 +254,7 @@ class RiwayatCompanyController extends Controller
         }
     }
 
+    // ✅✅✅ METHOD INI YANG DIUBAH - TAMBAHKAN CEK APPROVED REPORT ✅✅✅
     public function rateCandidate(Request $request, $applicationId)
     {
         // ✅ Validasi input
@@ -257,6 +283,22 @@ class RiwayatCompanyController extends Controller
                 ], 422);
             }
 
+            // ✅ CEK: Apakah rating company pernah dihapus admin karena dilaporkan candidate?
+            $hasApprovedReportFromCandidate = Reports::where('application_id', $applicationId)
+                ->where('status', 'approved')
+                ->whereHas('user', function ($q) {
+                    $q->where('role_id', 2); // Report DARI candidate (role_id = 2)
+                })
+                ->exists();
+
+            // Jika candidate melaporkan (approved) dan rating_candidates sudah null, berarti dihapus admin
+            if ($hasApprovedReportFromCandidate && is_null($application->rating_candidates)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rating Anda telah dihapus oleh admin karena dilaporkan kandidat. Anda tidak dapat memberikan rating lagi untuk kandidat ini.'
+                ], 403);
+            }
+
             // ✅ VALIDASI: Cek apakah sudah pernah kasih rating
             if ($application->rating_candidates) {
                 return response()->json([
@@ -275,7 +317,7 @@ class RiwayatCompanyController extends Controller
             if ($request->has('feedbacks') && is_array($request->feedbacks)) {
                 foreach ($request->feedbacks as $feedbackId) {
                     FeedbackApplication::create([
-                        'given_by' => 'company', // ✅ Feedback dari company
+                        'given_by' => 'company',
                         'feedback_id' => $feedbackId,
                         'application_id' => $application->id,
                     ]);
@@ -285,19 +327,74 @@ class RiwayatCompanyController extends Controller
             // ✅ Update average rating candidate
             $this->updateCandidateAverageRating($application->candidates_id);
 
+            Log::info('Company rated candidate successfully', [
+                'company_id' => $company->id,
+                'application_id' => $application->id,
+                'rating' => $request->rating_candidates,
+            ]);
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Rating dan review berhasil disimpan.'
+                'message' => 'Rating dan review berhasil disimpan.',
+                'data' => [
+                    'rating' => $request->rating_candidates,
+                    'review' => $request->review_candidate,
+                    'feedbacks_count' => count($request->feedbacks ?? [])
+                ]
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Application tidak ditemukan atau bukan milik company Anda.'
+            ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Rate candidate error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function unblockUser(Request $request, $blacklistId)
+    {
+        try {
+            $user = Auth::user();
+
+            // ✅ Cari blacklist milik user ini
+            $blacklist = Blacklist::where('id', $blacklistId)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+
+            // ✅ Hapus dari blacklist
+            $blacklist->delete();
+
+            Log::info('User unblocked successfully', [
+                'blacklist_id' => $blacklistId,
+                'company_user_id' => $user->id,
+                'unblocked_user_id' => $blacklist->blocked_user_id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengguna berhasil di-unblock. Mereka sekarang bisa melamar ke lowongan Anda.'
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data blacklist tidak ditemukan.'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Unblock User Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal meng-unblock pengguna: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -308,9 +405,16 @@ class RiwayatCompanyController extends Controller
 
         $averageRating = Applications::where('candidates_id', $candidateId)
             ->whereNotNull('rating_candidates')
+            ->where('rating_candidates', '>=', 1)
+            ->where('rating_candidates', '<=', 5)
             ->avg('rating_candidates');
 
         $candidate->update([
+            'avg_rating' => round($averageRating ?? 0, 2)
+        ]);
+
+        Log::info('Candidate average rating updated', [
+            'candidate_id' => $candidateId,
             'avg_rating' => round($averageRating ?? 0, 2)
         ]);
     }

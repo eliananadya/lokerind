@@ -143,15 +143,6 @@
             color: #0f172a;
         }
 
-        .candidate-email {
-            color: #64748b;
-            font-size: 0.875rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.375rem;
-        }
-
         /* History Meta */
         .history-meta {
             display: flex;
@@ -591,14 +582,14 @@
                     <button class="nav-link" id="report-tab" data-bs-toggle="tab" data-bs-target="#report" type="button"
                         role="tab">
                         <i class="bi bi-flag me-2"></i>Report
-                        <span class="tab-badge">{{ $reviewsToReport->total() }}</span>
+                        <span class="tab-badge">{{ $myReports->total() }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="blacklist-tab" data-bs-toggle="tab" data-bs-target="#blacklist"
                         type="button" role="tab">
                         <i class="bi bi-slash-circle me-2"></i>Blacklist
-                        <span class="tab-badge">0</span>
+                        <span class="tab-badge">{{ $blacklistedCandidates->total() }}</span>
                     </button>
                 </li>
             </ul>
@@ -615,10 +606,6 @@
                                     </div>
                                     <div class="candidate-details">
                                         <h5>{{ $application->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
-                                        <p class="candidate-email">
-                                            <i class="bi bi-envelope"></i>
-                                            {{ $application->candidate->email ?? 'Email Tidak Tersedia' }}
-                                        </p>
                                     </div>
                                 </div>
                                 <div>
@@ -653,6 +640,75 @@
                                 </div>
                             </div>
 
+                            @if ($application->message && trim($application->message) !== '')
+                                @php
+                                    // Tentukan warna message box berdasarkan status
+                                    $messageStyle = match ($application->status) {
+                                        'Accepted' => [
+                                            'bg' => 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);',
+                                            'border' => 'border-left-color: #10b981;',
+                                            'color' => 'color: #065f46;',
+                                            'icon' => 'bi-check-circle-fill',
+                                            'iconColor' => 'color: #10b981;',
+                                        ],
+                                        'Rejected' => [
+                                            'bg' => 'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);',
+                                            'border' => 'border-left-color: #ef4444;',
+                                            'color' => 'color: #991b1b;',
+                                            'icon' => 'bi-x-circle-fill',
+                                            'iconColor' => 'color: #ef4444;',
+                                        ],
+                                        'Selection' => [
+                                            'bg' => 'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);',
+                                            'border' => 'border-left-color: #f59e0b;',
+                                            'color' => 'color: #92400e;',
+                                            'icon' => 'bi-star-fill',
+                                            'iconColor' => 'color: #f59e0b;',
+                                        ],
+                                        'Finished' => [
+                                            'bg' => 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);',
+                                            'border' => 'border-left-color: #6366f1;',
+                                            'color' => 'color: #3730a3;',
+                                            'icon' => 'bi-flag-fill',
+                                            'iconColor' => 'color: #6366f1;',
+                                        ],
+                                        default => [
+                                            'bg' => 'background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);',
+                                            'border' => 'border-left-color: #3b82f6;',
+                                            'color' => 'color: #1e40af;',
+                                            'icon' => 'bi-chat-left-text-fill',
+                                            'iconColor' => 'color: #3b82f6;',
+                                        ],
+                                    };
+                                @endphp
+
+                                <div class="review-box mt-3"
+                                    style="{{ $messageStyle['bg'] }} {{ $messageStyle['border'] }} padding: 1rem 1.25rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <h6
+                                        style="{{ $messageStyle['color'] }} font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="bi {{ $messageStyle['icon'] }}"
+                                            style="{{ $messageStyle['iconColor'] }} font-size: 1rem;"></i>
+                                        Pesan untuk Kandidat
+                                    </h6>
+                                    <p class="review-text"
+                                        style="{{ $messageStyle['color'] }} line-height: 1.6; margin: 0; font-size: 0.875rem;">
+                                        {{ $application->message }}</p>
+                                </div>
+                            @endif
+                            @if ($application->status === 'Withdrawn' && $application->withdraw_reason && trim($application->withdraw_reason) !== '')
+                                <div class="review-box mt-3"
+                                    style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-left-color: #6b7280; padding: 1rem 1.25rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <h6
+                                        style="color: #374151; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="bi bi-x-circle-fill" style="color: #6b7280; font-size: 1rem;"></i>
+                                        Alasan Withdraw
+                                    </h6>
+                                    <p class="review-text"
+                                        style="color: #4b5563; line-height: 1.6; margin: 0; font-size: 0.875rem;">
+                                        {{ $application->withdraw_reason }}
+                                    </p>
+                                </div>
+                            @endif
                             <div class="action-buttons">
                                 @if ($application->status === 'Finished')
                                     @if (!$application->rating_candidates)
@@ -677,7 +733,6 @@
                                             Lihat Detail Rating
                                         </button>
                                     @endif
-                                @else
                                 @endif
                             </div>
                         </div>
@@ -703,10 +758,7 @@
                                     </div>
                                     <div class="candidate-details">
                                         <h5>{{ $rating->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
-                                        <p class="candidate-email">
-                                            <i class="bi bi-envelope"></i>
-                                            {{ $rating->candidate->email ?? 'Email Tidak Tersedia' }}
-                                        </p>
+
                                     </div>
                                 </div>
                                 <div class="rating-display">
@@ -745,6 +797,45 @@
                                     <p class="review-text">{{ $rating->review_company }}</p>
                                 </div>
                             @endif
+
+                            {{-- ✅ TAMBAHKAN ACTION BUTTONS DI SINI --}}
+                            @if ($rating->review_company)
+                                <div class="action-buttons">
+                                    @php
+                                        $isReported = $rating->reports->where('user_id', Auth::id())->count() > 0;
+                                        $isBlocked = in_array($rating->candidate->user_id, $blacklistedUsers);
+                                    @endphp
+
+                                    @if ($isReported)
+                                        <button class="btn btn-secondary" disabled>
+                                            <i class="bi bi-flag-fill"></i>
+                                            Sudah Dilaporkan
+                                        </button>
+                                    @else
+                                        <button class="btn btn-warning btn-report-review"
+                                            data-application-id="{{ $rating->id }}"
+                                            data-candidate-name="{{ $rating->candidate->name ?? 'Kandidat' }}">
+                                            <i class="bi bi-flag"></i>
+                                            Laporkan Review
+                                        </button>
+                                    @endif
+
+                                    @if ($isBlocked)
+                                        <button class="btn btn-dark" disabled>
+                                            <i class="bi bi-slash-circle-fill"></i>
+                                            Sudah Diblokir
+                                        </button>
+                                    @else
+                                        <button class="btn btn-danger btn-block-user"
+                                            data-application-id="{{ $rating->id }}"
+                                            data-candidate-name="{{ $rating->candidate->name ?? 'Kandidat' }}"
+                                            data-candidate-user-id="{{ $rating->candidate->user_id }}">
+                                            <i class="bi bi-slash-circle"></i>
+                                            Blokir Pengguna
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <div class="empty-state">
@@ -759,112 +850,132 @@
 
                 <!-- Tab Report -->
                 <div class="tab-pane fade" id="report" role="tabpanel">
-                    @forelse($reviewsToReport as $review)
+                    @forelse($myReports as $report)
                         <div class="history-item">
                             <div class="history-header">
                                 <div class="candidate-info">
                                     <div class="candidate-avatar">
-                                        {{ strtoupper(substr($review->candidate->name ?? 'U', 0, 1)) }}
+                                        {{ strtoupper(substr($report->application->candidate->name ?? 'U', 0, 1)) }}
                                     </div>
                                     <div class="candidate-details">
-                                        <h5>{{ $review->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
-                                        <p class="candidate-email">
-                                            <i class="bi bi-envelope"></i>
-                                            {{ $review->candidate->email ?? 'Email Tidak Tersedia' }}
-                                        </p>
+                                        <h5>{{ $report->application->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
+
                                     </div>
                                 </div>
-                                @if ($review->rating_company)
-                                    <div class="rating-display">
-                                        <span class="rating-stars">
-                                            @for ($i = 1; $i <= 5; $i++)
-                                                @if ($i <= $review->rating_company)
-                                                    <i class="bi bi-star-fill"></i>
-                                                @else
-                                                    <i class="bi bi-star"></i>
-                                                @endif
-                                            @endfor
-                                        </span>
-                                        <span>{{ $review->rating_company }}/5</span>
-                                    </div>
-                                @endif
+                                <div>
+                                    @php
+                                        $statusBadge = match ($report->status) {
+                                            'Pending' => ['class' => 'badge-pending', 'icon' => 'clock'],
+                                            'Reviewed' => ['class' => 'badge-selection', 'icon' => 'eye'],
+                                            'Resolved' => ['class' => 'badge-finished', 'icon' => 'check-circle'],
+                                            default => ['class' => 'badge-pending', 'icon' => 'clock'],
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $statusBadge['class'] }}">
+                                        <i class="bi bi-{{ $statusBadge['icon'] }} me-1"></i>
+                                        {{ $report->status }}
+                                    </span>
+                                </div>
                             </div>
 
                             <div class="history-meta">
                                 <div class="meta-item">
                                     <i class="bi bi-briefcase-fill"></i>
                                     <strong>Posisi:</strong>
-                                    <span>{{ $review->jobPosting->title ?? ($review->jobPosting->job_title ?? 'Tidak Tersedia') }}</span>
+                                    <span>{{ $report->application->jobPosting->title ?? 'Tidak Tersedia' }}</span>
                                 </div>
                                 <div class="meta-item">
                                     <i class="bi bi-calendar-event"></i>
-                                    <strong>Tanggal Review:</strong>
-                                    <span>{{ $review->updated_at->format('d M Y') }}</span>
+                                    <strong>Tanggal Laporan:</strong>
+                                    <span>{{ $report->created_at->format('d M Y, H:i') }}</span>
                                 </div>
                             </div>
 
                             <div class="review-box">
                                 <h6>
-                                    <i class="bi bi-chat-quote me-2"></i>
-                                    Review dari Kandidat:
+                                    <i class="bi bi-flag-fill me-2"></i>
+                                    Alasan Pelaporan:
                                 </h6>
-                                <p class="review-text">{{ $review->review_company }}</p>
+                                <p class="review-text">{{ $report->reason }}</p>
                             </div>
 
-                            <div class="action-buttons">
-                                @php
-                                    $isReported = $review->reports->where('user_id', Auth::id())->count() > 0;
-                                    $isBlocked = in_array($review->candidate->user_id, $blacklistedUsers);
-                                @endphp
-
-                                @if ($isReported)
-                                    <button class="btn btn-secondary" disabled>
-                                        <i class="bi bi-flag-fill"></i>
-                                        Sudah Dilaporkan
-                                    </button>
-                                @else
-                                    <button class="btn btn-warning btn-report-review"
-                                        data-application-id="{{ $review->id }}"
-                                        data-candidate-name="{{ $review->candidate->name ?? 'Kandidat' }}">
-                                        <i class="bi bi-flag"></i>
-                                        Laporkan Review
-                                    </button>
-                                @endif
-
-                                @if ($isBlocked)
-                                    <button class="btn btn-dark" disabled>
-                                        <i class="bi bi-slash-circle-fill"></i>
-                                        Sudah Diblokir
-                                    </button>
-                                @else
-                                    <button class="btn btn-danger btn-block-user"
-                                        data-application-id="{{ $review->id }}"
-                                        data-candidate-name="{{ $review->candidate->name ?? 'Kandidat' }}"
-                                        data-candidate-user-id="{{ $review->candidate->user_id }}">
-                                        <i class="bi bi-slash-circle"></i>
-                                        Blokir Pengguna
-                                    </button>
-                                @endif
-                            </div>
+                            @if ($report->application->review_company)
+                                <div class="review-box mt-2" style="border-left-color: #f59e0b;">
+                                    <h6>
+                                        <i class="bi bi-chat-quote me-2"></i>
+                                        Review yang Dilaporkan:
+                                    </h6>
+                                    <p class="review-text">{{ $report->application->review_company }}</p>
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <div class="empty-state">
                             <i class="bi bi-flag"></i>
-                            <h4>Belum Ada Review untuk Dilaporkan</h4>
-                            <p>Review dari kandidat akan muncul di sini</p>
+                            <h4>Belum Ada Laporan</h4>
+                            <p>Laporan yang Anda buat akan muncul di sini</p>
                         </div>
                     @endforelse
 
-                    {{ $reviewsToReport->appends(['status' => $statusFilter])->links() }}
+                    {{ $myReports->links() }}
                 </div>
 
                 <!-- Tab Blacklist -->
+                <!-- Tab Blacklist -->
                 <div class="tab-pane fade" id="blacklist" role="tabpanel">
-                    <div class="empty-state">
-                        <i class="bi bi-slash-circle"></i>
-                        <h4>Belum Ada Pengguna Diblokir</h4>
-                        <p>Kandidat yang diblokir akan muncul di sini</p>
-                    </div>
+                    @forelse($blacklistedCandidates as $blacklist)
+                        <div class="history-item">
+                            <div class="history-header">
+                                <div class="candidate-info">
+                                    <div class="candidate-avatar"
+                                        style="background: linear-gradient(135deg, #dc3545, #c82333);">
+                                        {{ strtoupper(substr($blacklist->blockedUser->candidate->name ?? 'U', 0, 1)) }}
+                                    </div>
+                                    <div class="candidate-details">
+                                        <h5>{{ $blacklist->blockedUser->candidate->name ?? 'Nama Tidak Tersedia' }}</h5>
+
+                                    </div>
+                                </div>
+                                <span class="badge badge-withdrawn">
+                                    <i class="bi bi-slash-circle-fill me-1"></i>
+                                    Diblokir
+                                </span>
+                            </div>
+
+                            <div class="history-meta">
+                                <div class="meta-item">
+                                    <i class="bi bi-calendar-event"></i>
+                                    <strong>Tanggal Diblokir:</strong>
+                                    <span>{{ $blacklist->created_at->format('d M Y, H:i') }}</span>
+                                </div>
+                            </div>
+
+                            <div class="review-box" style="border-left-color: #dc3545;">
+                                <h6>
+                                    <i class="bi bi-slash-circle-fill me-2"></i>
+                                    Alasan Pemblokiran:
+                                </h6>
+                                <p class="review-text">{{ $blacklist->reason }}</p>
+                            </div>
+
+                            {{-- ✅ TAMBAHKAN ACTION BUTTON UNBLOCK --}}
+                            <div class="action-buttons">
+                                <button class="btn btn-success btn-unblock-user" data-blacklist-id="{{ $blacklist->id }}"
+                                    data-candidate-name="{{ $blacklist->blockedUser->candidate->name ?? 'Kandidat' }}">
+                                    <i class="bi bi-check-circle"></i>
+                                    Unblock Pengguna
+                                </button>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="empty-state">
+                            <i class="bi bi-slash-circle"></i>
+                            <h4>Belum Ada Pengguna Diblokir</h4>
+                            <p>Kandidat yang diblokir akan muncul di sini</p>
+                        </div>
+                    @endforelse
+
+                    {{ $blacklistedCandidates->links() }}
                 </div>
             </div>
         </div>
@@ -1044,13 +1155,6 @@
 
                     if (!confirm.isConfirmed) return;
 
-                    Swal.fire({
-                        title: 'Memblokir Pengguna...',
-                        html: '<div class="spinner-border text-danger" style="width: 3rem; height: 3rem;"></div>',
-                        showConfirmButton: false,
-                        allowOutsideClick: false
-                    });
-
                     try {
                         const response = await fetch(
                             `{{ route('company.riwayat.block', '') }}/${applicationId}`, {
@@ -1091,7 +1195,69 @@
                     }
                 });
             });
+            // ✅ Unblock User Functionality
+            document.querySelectorAll('.btn-unblock-user').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const blacklistId = this.dataset.blacklistId;
+                    const candidateName = this.dataset.candidateName;
 
+                    const confirm = await Swal.fire({
+                        title: 'Unblock Pengguna?',
+                        html: `
+                <div class="text-start">
+                    <p class="mb-3">Anda yakin ingin meng-unblock:</p>
+                    <p class="mb-0 text-primary fw-bold fs-5">${candidateName}</p>
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Setelah di-unblock, pengguna ini akan bisa melamar ke lowongan Anda lagi.
+                    </div>
+                </div>
+            `,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="bi bi-check-circle me-2"></i>Ya, Unblock!',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#6c757d',
+                        width: '600px'
+                    });
+                    try {
+                        const response = await fetch(
+                            `{{ route('company.riwayat.unblock', '') }}/${blacklistId}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json'
+                                }
+                            });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            await Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                            location.reload();
+                        } else {
+                            throw new Error(data.message || 'Gagal meng-unblock pengguna');
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: error.message,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                });
+            });
             // Tab Persistence and Synchronization
             const tabButtons = document.querySelectorAll('#historyTabs button[data-bs-toggle="tab"]');
             const savedTab = localStorage.getItem('companyHistoryActiveTab') || '#all';
@@ -1172,8 +1338,8 @@
                             </label>
                             <div class="star-rating" id="starRating">
                                 ${[1,2,3,4,5].map(star => `
-                                                                                                                                                                                                                                <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
-                                                                                                                                                                                                                            `).join('')}
+                                                                                                                                                                                                                                                                                                    <i class="bi bi-star star-icon" data-rating="${star}" style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
+                                                                                                                                                                                                                                                                                                `).join('')}
                             </div>
                             <input type="hidden" id="ratingValue" value="0">
                         </div>
@@ -1388,39 +1554,39 @@
                     </div>
 
                     ${review ? `
-                                <div class="mb-3 pb-3 border-bottom">
-                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
-                                        <i class="bi bi-chat-quote-fill me-2"></i>Review
-                                    </label>
-                                    <div class="p-3 bg-light rounded mt-2">
-                                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${review}</p>
-                                    </div>
-                                </div>
-                            ` : ''}
+                                                                                                    <div class="mb-3 pb-3 border-bottom">
+                                                                                                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                            <i class="bi bi-chat-quote-fill me-2"></i>Review
+                                                                                                        </label>
+                                                                                                        <div class="p-3 bg-light rounded mt-2">
+                                                                                                            <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${review}</p>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                ` : ''}
 
                     ${feedbacks ? `
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
-                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
-                                    </label>
-                                    <div class="d-flex flex-wrap gap-2 mt-2">
-                                        ${feedbacks.split(', ').map(fb => `
+                                                                                                    <div class="mb-3">
+                                                                                                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                            <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                                                                                        </label>
+                                                                                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                                                                                            ${feedbacks.split(', ').map(fb => `
                                     <span class="badge bg-primary px-3 py-2" style="font-size: 0.875rem;">
                                         <i class="bi bi-tag-fill me-1"></i>${fb}
                                     </span>
                                 `).join('')}
-                                    </div>
-                                </div>
-                            ` : `
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
-                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
-                                    </label>
-                                    <p class="text-muted mb-0 mt-2">
-                                        <i class="bi bi-info-circle me-2"></i>Tidak ada feedback yang dipilih
-                                    </p>
-                                </div>
-                            `}
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                ` : `
+                                                                                                    <div class="mb-3">
+                                                                                                        <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                            <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                                                                                        </label>
+                                                                                                        <p class="text-muted mb-0 mt-2">
+                                                                                                            <i class="bi bi-info-circle me-2"></i>Tidak ada feedback yang dipilih
+                                                                                                        </p>
+                                                                                                    </div>
+                                                                                                `}
                 </div>
             `,
                     width: '600px',

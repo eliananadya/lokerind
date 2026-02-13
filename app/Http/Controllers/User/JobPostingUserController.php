@@ -25,6 +25,72 @@ class JobPostingUserController extends Controller
      * ✅ DISPLAY LISTING OF JOB POSTINGS
      * Menampilkan daftar lowongan dengan binary matching
      */
+    private function filterJobsByDays($jobs, $selectedDayIds)
+    {
+        // Jika tidak ada filter hari, return semua jobs
+        if (empty($selectedDayIds)) {
+            return $jobs;
+        }
+
+        // ✅ CONVERT KE INTEGER untuk memastikan tipe data sama
+        $selectedDayIds = array_map('intval', $selectedDayIds);
+
+        Log::info('Filtering jobs by days', [
+            'selected_days' => $selectedDayIds,
+            'total_jobs_before_filter' => $jobs->count()
+        ]);
+
+        // Filter jobs
+        $filteredJobs = $jobs->filter(function ($job) use ($selectedDayIds) {
+            // Ambil semua day_id dari jobDatess
+            $jobDayIds = $job->jobDatess
+                ->pluck('day_id')
+                ->filter() // Hapus null values
+                ->unique()
+                ->map(function ($id) {
+                    return (int) $id; // ✅ CONVERT KE INTEGER
+                })
+                ->values()
+                ->toArray();
+
+            // ✅ JIKA JOB TIDAK PUNYA HARI, SKIP
+            if (empty($jobDayIds)) {
+                Log::debug('Job has no days', [
+                    'job_id' => $job->id,
+                    'job_title' => $job->title
+                ]);
+                return false;
+            }
+
+            // ✅ LOGIC BARU: Job tampil jika SEMUA hari job ADA di selected days
+            // Artinya: jobDayIds harus SUBSET dari selectedDayIds
+            // Contoh:
+            // - Job punya [1,4] (Monday, Thursday) + User pilih [4] (Thursday) = TIDAK MUNCUL ❌
+            // - Job punya [4] (Thursday) + User pilih [4] (Thursday) = MUNCUL ✅
+            // - Job punya [4] (Thursday) + User pilih [1,4] (Monday, Thursday) = MUNCUL ✅
+            // - Job punya [1,4] (Monday, Thursday) + User pilih [1,4] (Monday, Thursday) = MUNCUL ✅
+
+            $allDaysMatch = empty(array_diff($jobDayIds, $selectedDayIds));
+
+            Log::debug('Job day matching', [
+                'job_id' => $job->id,
+                'job_title' => $job->title,
+                'job_days' => $jobDayIds,
+                'selected_days' => $selectedDayIds,
+                'all_days_match' => $allDaysMatch
+            ]);
+
+            return $allDaysMatch;
+        });
+
+        Log::info('Days filter completed', [
+            'total_jobs_after_filter' => $filteredJobs->count(),
+            'filtered_out' => $jobs->count() - $filteredJobs->count()
+        ]);
+
+        return $filteredJobs->values(); // Reset keys
+    }
+
     public function index(Request $request)
     {
         $appliedJobIds = [];
@@ -158,12 +224,13 @@ class JobPostingUserController extends Controller
         $cities = Cities::orderBy('name', 'asc')->get();
         $industries = Industries::orderBy('name', 'asc')->get();
         $typeJobs = TypeJobs::orderBy('name', 'asc')->get();
-
+        $days = \App\Models\Days::orderBy('id', 'asc')->get();
         return view('candidates.lowongan', compact(
             'jobPostings',
             'cities',
             'industries',
             'typeJobs',
+            'days',
             'appliedJobIds',
             'savedJobIds',
             'applicationMessages'
@@ -298,6 +365,16 @@ class JobPostingUserController extends Controller
                     return $job;
                 }
             });
+
+            // ✅ FILTER: HANYA TAMPILKAN JOB DENGAN match_percentage > 0
+            // (Job dengan 0% = tidak lolos day filter)
+            $jobPostings = $jobPostings->filter(function ($job) {
+                return $job->match_percentage > 0;
+            })->values();
+
+            Log::info('Jobs after day filter', [
+                'total_jobs_after_filter' => $jobPostings->count()
+            ]);
 
             // ========================================
             // APPLY SORTING
@@ -484,7 +561,36 @@ class JobPostingUserController extends Controller
         if ($request->filled('industry')) {
             $query->where('industries_id', $request->industry);
         }
+        if ($request->filled('days')) {
+            $selectedDayIds = $request->days;
 
+            // ✅ DEBUG: Log jobs sebelum filter
+            Log::info('Jobs BEFORE day filter', [
+                'total' => $jobs->count(),
+                'selected_days' => $selectedDayIds,
+                'sample_job_days' => $jobs->take(3)->map(function ($job) {
+                    return [
+                        'id' => $job->id,
+                        'title' => $job->title,
+                        'days' => $job->jobDatess->pluck('day_id')->toArray()
+                    ];
+                })
+            ]);
+
+            $jobs = $this->filterJobsByDays($jobs, $selectedDayIds);
+
+            // ✅ DEBUG: Log jobs setelah filter
+            Log::info('Jobs AFTER day filter', [
+                'total' => $jobs->count(),
+                'remaining_jobs' => $jobs->map(function ($job) {
+                    return [
+                        'id' => $job->id,
+                        'title' => $job->title,
+                        'days' => $job->jobDatess->pluck('day_id')->toArray()
+                    ];
+                })
+            ]);
+        }
         // ✅ GET FILTERED JOBS
         try {
             $jobs = $query->get();
@@ -508,7 +614,6 @@ class JobPostingUserController extends Controller
                 'applicationMessages' => $applicationMessages,
             ], 500);
         }
-
         // ========================================
         // APPLY BINARY MATCHING IF CANDIDATE EXISTS
         // ========================================

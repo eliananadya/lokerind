@@ -9,12 +9,14 @@ use App\Models\Blacklist;
 use App\Models\Candidates;
 use App\Models\Companies;
 use App\Models\JobPostings;
-use App\Models\JobCandidateMatch; // ✅ TAMBAHKAN INI
+use App\Models\JobCandidateMatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Feedback;
+use App\Models\FeedbackApplication;
 
 class CandidateMatchController extends Controller
 {
@@ -24,34 +26,91 @@ class CandidateMatchController extends Controller
      */
     private function calculateBinaryMatch($candidate, $jobPosting)
     {
-        // Ambil preferensi kandidat
-        $candidateCities = $candidate->preferredCities->pluck('id')->toArray();
-        $candidateTypeJobs = $candidate->preferredTypeJobs->pluck('id')->toArray();
-        $candidateIndustries = $candidate->preferredIndustries->pluck('id')->toArray();
+        $totalRequirements = 0; // |L| - Total requirement dari job
+        $matchedRequirements = 0; // |K ∩ L| - Requirement yang cocok
 
-        // Binary matching: 1 = cocok, 0 = tidak cocok
-        $cityMatch = in_array($jobPosting->cities_id, $candidateCities) ? 1 : 0;
-        $typeJobMatch = in_array($jobPosting->type_jobs_id, $candidateTypeJobs) ? 1 : 0;
-        $industryMatch = in_array($jobPosting->industries_id, $candidateIndustries) ? 1 : 0;
+        // Tracking per kriteria
+        $cityMatch = 0;
+        $typeJobMatch = 0;
+        $industryMatch = 0;
+        $salaryMatch = 0;
+        $skillMatch = 0;
+        $dayMatch = 0;
 
-        // Hitung total match
-        $totalMatch = $cityMatch + $typeJobMatch + $industryMatch;
-        $totalCriteria = 3; // city, type_job, industry
+        try {
+            // 1. CITY MATCH (1 requirement)
+            $totalRequirements++;
+            $candidateCities = $candidate->preferredCities->pluck('id')->toArray();
+            if (in_array($jobPosting->cities_id, $candidateCities)) {
+                $matchedRequirements++;
+                $cityMatch = 1;
+            }
 
-        // Persentase kecocokan
-        $matchPercentage = ($totalMatch / $totalCriteria) * 100;
+            // 2. TYPE JOB MATCH (1 requirement)
+            $totalRequirements++;
+            $candidateTypeJobs = $candidate->preferredTypeJobs->pluck('id')->toArray();
+            if (in_array($jobPosting->type_jobs_id, $candidateTypeJobs)) {
+                $matchedRequirements++;
+                $typeJobMatch = 1;
+            }
+
+            // 3. INDUSTRY MATCH (1 requirement)
+            $totalRequirements++;
+            $candidateIndustries = $candidate->preferredIndustries->pluck('id')->toArray();
+            if (in_array($jobPosting->industries_id, $candidateIndustries)) {
+                $matchedRequirements++;
+                $industryMatch = 1;
+            }
+
+            // 4. SALARY MATCH (1 requirement jika job punya salary)
+            if ($jobPosting->salary) {
+                $totalRequirements++;
+                if ($candidate->min_salary && $jobPosting->salary >= $candidate->min_salary) {
+                    $matchedRequirements++;
+                    $salaryMatch = 1;
+                }
+            }
+
+            // 5. SKILL MATCH (N requirements - setiap skill job dihitung)
+            $jobSkills = $jobPosting->skills->pluck('id')->toArray();
+            $candidateSkills = $candidate->skills->pluck('id')->toArray();
+
+            if (!empty($jobSkills)) {
+                $totalRequirements += count($jobSkills);
+                $commonSkills = array_intersect($candidateSkills, $jobSkills);
+                $matchedRequirements += count($commonSkills);
+                $skillMatch = count($commonSkills) > 0 ? 1 : 0;
+            }
+
+            // 6. DAY MATCH (N requirements - setiap hari job dihitung)
+            $jobDays = $jobPosting->jobDatess->pluck('days_id')->filter()->unique()->toArray();
+            $candidateDays = $candidate->days->pluck('id')->toArray();
+
+            if (!empty($jobDays)) {
+                $totalRequirements += count($jobDays);
+                $commonDays = array_intersect($candidateDays, $jobDays);
+                $matchedRequirements += count($commonDays);
+                $dayMatch = count($commonDays) > 0 ? 1 : 0;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error calculating match: ' . $e->getMessage());
+        }
+
+        // Hitung persentase
+        $matchPercentage = $totalRequirements > 0
+            ? ($matchedRequirements / $totalRequirements) * 100
+            : 0;
 
         return [
-            'total_score' => round($matchPercentage, 2),
             'city_match' => $cityMatch,
             'type_job_match' => $typeJobMatch,
             'industry_match' => $industryMatch,
+            'salary_match' => $salaryMatch,
+            'skill_match' => $skillMatch,
+            'day_match' => $dayMatch,
             'match_percentage' => round($matchPercentage, 2),
-            'breakdown' => [
-                'city' => $cityMatch ? 100 : 0,
-                'type_job' => $typeJobMatch ? 100 : 0,
-                'industry' => $industryMatch ? 100 : 0,
-            ]
+            'total_requirements' => $totalRequirements,
+            'matched_requirements' => $matchedRequirements,
         ];
     }
 
@@ -67,7 +126,6 @@ class CandidateMatchController extends Controller
                 return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
             }
 
-            // Get company
             $company = Companies::where('user_id', $user->id)->first();
 
             if (!$company) {
@@ -75,121 +133,116 @@ class CandidateMatchController extends Controller
                     ->with('error', 'Profil perusahaan tidak ditemukan.');
             }
 
-            \Log::info('Company ID: ' . $company->id);
-            \Log::info('User ID: ' . $user->id);
-
-            // ✅ Get blacklisted candidate IDs
+            // Get blacklisted candidate IDs
             $blacklistedCandidateIds = Blacklist::where('user_id', $user->id)
                 ->pluck('blocked_user_id')
                 ->toArray();
 
-            \Log::info('Blacklisted User IDs: ', $blacklistedCandidateIds);
-
-            // ✅ Convert blocked_user_id ke candidates_id
             $blacklistedCandidateIds = Candidates::whereIn('user_id', $blacklistedCandidateIds)
                 ->pluck('id')
                 ->toArray();
 
-            \Log::info('Blacklisted Candidate IDs: ', $blacklistedCandidateIds);
-
             // Get all ACTIVE and APPROVED job postings
             $jobPostings = JobPostings::where('companies_id', $company->id)
                 ->where('status', 'Open')
-                ->where('verification_status', 'Approved') // ✅ HANYA APPROVED
-                ->with(['skills', 'industry', 'typeJobs', 'city', 'applications'])
+                ->where('verification_status', 'Approved')
+                ->with(['skills', 'industry', 'typeJobs', 'city', 'applications', 'jobDatess'])
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            \Log::info('Total FILTERED Jobs (Open + Approved): ' . $jobPostings->count());
-
             // Get selected job posting
             $selectedJobId = $request->get('job_id');
-            $selectedJob = null;
-
-            if ($selectedJobId) {
-                $selectedJob = $jobPostings->firstWhere('id', $selectedJobId);
-            } else {
-                $selectedJob = $jobPostings->first();
-            }
-
-            \Log::info('Selected Job ID: ' . ($selectedJob ? $selectedJob->id : 'NULL'));
+            $selectedJob = $selectedJobId
+                ? $jobPostings->firstWhere('id', $selectedJobId)
+                : $jobPostings->first();
 
             $matchingCandidates = collect();
 
             if ($selectedJob) {
-                // ✅ Get candidates yang sudah apply
+                // Get candidates yang sudah apply
                 $appliedCandidateIds = Applications::where('job_posting_id', $selectedJob->id)
                     ->pluck('candidates_id')
                     ->toArray();
 
-                \Log::info('Applied Candidate IDs: ', $appliedCandidateIds);
-
-                // ✅ Get all candidates (exclude blacklisted AND already applied)
-                $candidates = Candidates::with([
+                // ✅ Get ALL candidates tanpa filter apapun
+                $allCandidates = Candidates::with([
                     'skills',
                     'preferredIndustries',
                     'preferredTypeJobs',
                     'preferredCities',
+                    'days',
                     'user',
                     'portofolios'
-                ])
-                    ->whereNotIn('id', $blacklistedCandidateIds) // ✅ Exclude blacklisted
-                    ->whereNotIn('id', $appliedCandidateIds)     // ✅ Exclude already applied
-                    ->get();
+                ])->get();
 
-                \Log::info('Total Candidates (after filtering): ' . $candidates->count());
+                Log::info('=== CANDIDATE MATCHING DEBUG ===', [
+                    'total_candidates_in_db' => $allCandidates->count(),
+                    'blacklisted_count' => count($blacklistedCandidateIds),
+                    'applied_count' => count($appliedCandidateIds),
+                ]);
 
-                // ✅ CALCULATE BINARY MATCH untuk setiap kandidat
+                // Filter manual untuk debugging yang lebih baik
+                $candidates = $allCandidates->filter(function ($candidate) use ($blacklistedCandidateIds, $appliedCandidateIds) {
+                    $isBlacklisted = in_array($candidate->id, $blacklistedCandidateIds);
+                    $hasApplied = in_array($candidate->id, $appliedCandidateIds);
+
+                    if ($isBlacklisted) {
+                        Log::debug("Candidate {$candidate->name} (ID: {$candidate->id}) is blacklisted");
+                    }
+                    if ($hasApplied) {
+                        Log::debug("Candidate {$candidate->name} (ID: {$candidate->id}) has already applied");
+                    }
+
+                    return !$isBlacklisted && !$hasApplied;
+                });
+
+                Log::info('Candidates after filtering:', [
+                    'available_count' => $candidates->count()
+                ]);
+
+                // ✅ Calculate match menggunakan JobCandidateMatch model
                 foreach ($candidates as $candidate) {
                     try {
-                        // Hitung binary match
-                        $matchResult = $this->calculateBinaryMatch($candidate, $selectedJob);
+                        // Gunakan method dari JobCandidateMatch
+                        $matchData = JobCandidateMatch::getMatchData($candidate, $selectedJob);
 
                         // Simpan ke database
-                        $matchRecord = JobCandidateMatch::updateOrCreate(
+                        JobCandidateMatch::updateOrCreate(
                             [
                                 'candidates_id' => $candidate->id,
                                 'job_posting_id' => $selectedJob->id,
                             ],
-                            [
-                                'city_match' => $matchResult['city_match'],
-                                'type_job_match' => $matchResult['type_job_match'],
-                                'industry_match' => $matchResult['industry_match'],
-                                'match_percentage' => $matchResult['match_percentage'],
-                            ]
+                            $matchData
                         );
 
                         // Attach match data ke candidate object
-                        $candidate->match_score = $matchResult['total_score'];
-                        $candidate->match_percentage = $matchResult['match_percentage'];
-                        $candidate->city_match = $matchResult['city_match'];
-                        $candidate->type_job_match = $matchResult['type_job_match'];
-                        $candidate->industry_match = $matchResult['industry_match'];
-                        $candidate->match_breakdown = $matchResult['breakdown'];
+                        $candidate->match_score = $matchData['match_percentage'];
+                        $candidate->city_match = $matchData['city_match'];
+                        $candidate->type_job_match = $matchData['type_job_match'];
+                        $candidate->industry_match = $matchData['industry_match'];
+                        $candidate->salary_match = $matchData['salary_match'];
+                        $candidate->skill_match = $matchData['skill_match'];
+                        $candidate->day_match = $matchData['day_match'];
 
-                        // ✅ Hanya tampilkan kandidat dengan match >= 33% (minimal 1 dari 3 kriteria cocok)
-                        if ($candidate->match_score >= 33.33) {
-                            $matchingCandidates->push($candidate);
-                        }
+                        // ✅ TAMPILKAN SEMUA KANDIDAT (tidak ada filter minimum)
+                        $matchingCandidates->push($candidate);
 
-                        \Log::info('Candidate Match Calculated', [
-                            'candidate_id' => $candidate->id,
-                            'candidate_name' => $candidate->name,
-                            'match_score' => $matchResult['total_score'],
-                            'city_match' => $matchResult['city_match'],
-                            'type_job_match' => $matchResult['type_job_match'],
-                            'industry_match' => $matchResult['industry_match']
+                        Log::info('Match Calculated for ' . $candidate->name, [
+                            'match_percentage' => $matchData['match_percentage'] . '%',
+                            'details' => $matchData
                         ]);
                     } catch (\Exception $e) {
-                        \Log::error('Error calculating match for candidate ' . $candidate->id . ': ' . $e->getMessage());
+                        Log::error('Error calculating match for candidate ' . $candidate->id . ': ' . $e->getMessage());
                         continue;
                     }
                 }
 
-                // Sort by match score (highest first)
+                // Sort by match percentage (highest first)
                 $matchingCandidates = $matchingCandidates->sortByDesc('match_score');
 
-                \Log::info('Total Matching Candidates (score >= 33%): ' . $matchingCandidates->count());
+                Log::info('Final Matching Results:', [
+                    'total_matching' => $matchingCandidates->count()
+                ]);
             }
 
             // Pagination
@@ -203,109 +256,210 @@ class CandidateMatchController extends Controller
                 ['path' => $request->url(), 'query' => $request->query()]
             );
 
-            // ✅ Statistics dengan Binary Match
-            $allMatches = $matchingCandidates->items();
-            $stats = [
-                'total_matches' => $matchingCandidates->total(),
-                'perfect_matches' => collect($allMatches)->where('match_score', '=', 100)->count(), // 100% (3/3 cocok)
-                'good_matches' => collect($allMatches)->where('match_score', '=', 66.67)->count(), // 66.67% (2/3 cocok)
-                'fair_matches' => collect($allMatches)->where('match_score', '=', 33.33)->count(), // 33.33% (1/3 cocok)
-                'excellent_matches' => collect($allMatches)->where('match_score', '=', 100)->count(),    // Alias untuk perfect
-            ];
-
             return view('company.candidates.match', compact(
                 'matchingCandidates',
                 'jobPostings',
-                'selectedJob',
-                'stats'
+                'selectedJob'
             ));
         } catch (\Exception $e) {
-            \Log::error('Candidate Match Error: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+            Log::error('Candidate Match Error: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
 
             return redirect()->route('company.dashboard')
-                ->with('error', 'Terjadi kesalahan saat memuat data kandidat: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Get candidate detail via AJAX
-     */
-    public function getCandidateDetail($candidateId)
+    public function getCandidateRatingDetail($candidateId)
     {
         try {
-            \Log::info('=== START getCandidateDetail ===');
-            \Log::info('Candidate ID: ' . $candidateId);
-
-            if (!is_numeric($candidateId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'ID kandidat tidak valid'
-                ], 400);
-            }
+            Log::info('=== START GET CANDIDATE RATING DETAIL (MATCH) ===', [
+                'candidate_id' => $candidateId
+            ]);
 
             $candidate = Candidates::with([
-                'skills',
-                'preferredIndustries',
-                'preferredTypeJobs',
-                'preferredCities',
-                'days',
                 'user',
+                'skills',
+                'preferredCities',
+                'preferredIndustries',
+                'days',
                 'portofolios'
             ])->find($candidateId);
 
             if (!$candidate) {
+                Log::error('Candidate not found', ['candidate_id' => $candidateId]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Kandidat tidak ditemukan'
                 ], 404);
             }
 
-            $response = [
-                'success' => true,
-                'candidate' => [
-                    'id' => $candidate->id,
-                    'name' => $candidate->name ?? 'N/A',
-                    'gender' => $candidate->gender ?? 'N/A',
-                    'birth_date' => $candidate->birth_date ?? null,
-                    'phone_number' => $candidate->phone_number ?? null,
-                    'description' => $candidate->description ?? null,
-                    'min_height' => $candidate->min_height ?? null,
-                    'min_weight' => $candidate->min_weight ?? null,
-                    'min_salary' => $candidate->min_salary ?? null,
-                    'level_english' => $candidate->level_english ?? 'N/A',
-                    'level_mandarin' => $candidate->level_mandarin ?? 'N/A',
-                    'avg_rating' => $candidate->avg_rating ?? 0,
-                    'point' => $candidate->point ?? 0,
-                    'user' => [
-                        'email' => optional($candidate->user)->email ?? 'N/A'
-                    ],
-                    'skills' => $candidate->skills->map(function ($skill) {
-                        return ['name' => $skill->name ?? 'N/A'];
-                    })->toArray(),
-                    'preferred_industries' => $candidate->preferredIndustries->map(function ($industry) {
-                        return ['name' => $industry->name ?? 'N/A'];
-                    })->toArray(),
-                    'preferred_type_jobs' => $candidate->preferredTypeJobs->map(function ($type) {
-                        return ['name' => $type->name ?? 'N/A'];
-                    })->toArray(),
-                    'preferred_cities' => $candidate->preferredCities->map(function ($city) {
-                        return ['name' => $city->name ?? 'N/A'];
-                    })->toArray(),
-                    'portofolios' => $candidate->portofolios->map(function ($portfolio) {
-                        return [
-                            'title' => $portfolio->caption ?? 'Portfolio',
-                            'description' => $portfolio->caption ?? null,
-                            'url' => $portfolio->file ? asset('storage/' . $portfolio->file) : null
-                        ];
-                    })->toArray()
-                ]
+            // Ambil aplikasi dengan rating
+            $applications = Applications::where('candidates_id', $candidateId)
+                ->whereIn('status', ['Accepted', 'Finished'])
+                ->whereNotNull('rating_candidates')
+                ->with([
+                    'jobPosting.company.user',
+                    'jobPosting.typeJobs',
+                    'jobPosting.city',
+                    'feedbackApplications' => function ($q) {
+                        $q->where('given_by', 'company')->with('feedback');
+                    }
+                ])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            $averageRating = $applications->avg('rating_candidates');
+
+            $ratingBreakdown = [
+                5 => $applications->where('rating_candidates', 5)->count(),
+                4 => $applications->where('rating_candidates', 4)->count(),
+                3 => $applications->where('rating_candidates', 3)->count(),
+                2 => $applications->where('rating_candidates', 2)->count(),
+                1 => $applications->where('rating_candidates', 1)->count(),
             ];
 
-            \Log::info('Response prepared successfully');
-            return response()->json($response, 200);
+            $candidateFeedbacks = Feedback::where('for', 'candidate')->get();
+            $feedbackCounts = [];
+
+            foreach ($candidateFeedbacks as $feedback) {
+                $count = FeedbackApplication::where('feedback_id', $feedback->id)
+                    ->where('given_by', 'company')
+                    ->whereHas('application', function ($q) use ($candidateId) {
+                        $q->where('candidates_id', $candidateId);
+                    })
+                    ->count();
+
+                if ($count > 0) {
+                    $feedbackCounts[] = [
+                        'name' => $feedback->name,
+                        'count' => $count
+                    ];
+                }
+            }
+
+            $reviews = $applications->map(function ($app) {
+                return [
+                    'id' => $app->id,
+                    'company_name' => $app->jobPosting && $app->jobPosting->company
+                        ? $app->jobPosting->company->name
+                        : 'Unknown',
+                    'job_title' => $app->jobPosting ? $app->jobPosting->title : '-',
+                    'rating' => $app->rating_candidates,
+                    'review' => $app->review_candidate,
+                    'date' => $app->updated_at->format('d M Y'),
+                    'feedbacks' => $app->feedbackApplications->map(function ($fa) {
+                        return $fa->feedback ? $fa->feedback->name : '-';
+                    })
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'candidate' => $candidate,
+                    'average_rating' => round($averageRating ?? 0, 1),
+                    'total_ratings' => $applications->count(),
+                    'rating_breakdown' => $ratingBreakdown,
+                    'feedback_counts' => $feedbackCounts,
+                    'reviews' => $reviews
+                ]
+            ]);
         } catch (\Exception $e) {
-            \Log::error('Exception in getCandidateDetail: ' . $e->getMessage());
+            Log::error('=== ERROR GET CANDIDATE RATING DETAIL (MATCH) ===', [
+                'candidate_id' => $candidateId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data rating kandidat: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * Get candidate detail via AJAX
+     */
+    public function getCandidateDetail($candidateId)
+    {
+        try {
+            Log::info('=== START GET CANDIDATE DETAIL ===', ['candidate_id' => $candidateId]);
+
+            $candidate = Candidates::with([
+                'user',
+                'skills',
+                'preferredCities',
+                'preferredIndustries',
+                'preferredTypeJobs',
+                'days',
+                'portofolios'
+            ])->find($candidateId);
+
+            if (!$candidate) {
+                Log::error('Candidate not found', ['candidate_id' => $candidateId]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kandidat tidak ditemukan'
+                ], 404);
+            }
+
+            Log::info('Candidate found', ['name' => $candidate->name]);
+
+            // Format data untuk response
+            $candidateData = [
+                'id' => $candidate->id,
+                'candidates_id' => $candidate->id, // Tambahkan ini untuk compatibility
+                'name' => $candidate->name ?? 'N/A',
+                'gender' => $candidate->gender ?? 'N/A',
+                'birth_date' => $candidate->birth_date ?? null,
+                'phone_number' => $candidate->phone_number ?? null,
+                'description' => $candidate->description ?? null,
+                'min_height' => $candidate->min_height ?? null,
+                'min_weight' => $candidate->min_weight ?? null,
+                'min_salary' => $candidate->min_salary ?? null,
+                'level_english' => $candidate->level_english ?? 'N/A',
+                'level_mandarin' => $candidate->level_mandarin ?? 'N/A',
+                'avg_rating' => $candidate->avg_rating ?? 0,
+                'point' => $candidate->point ?? 0,
+                'user' => [
+                    'email' => $candidate->user->email ?? 'N/A',
+                    'photo' => $candidate->photo ?? null // Ambil dari candidates table
+                ],
+                'skills' => $candidate->skills->map(function ($skill) {
+                    return ['name' => $skill->name];
+                })->toArray(),
+                'preferred_industries' => $candidate->preferredIndustries->map(function ($industry) {
+                    return ['name' => $industry->name];
+                })->toArray(),
+                'preferred_type_jobs' => $candidate->preferredTypeJobs->map(function ($typeJob) {
+                    return ['name' => $typeJob->name];
+                })->toArray(),
+                'preferred_cities' => $candidate->preferredCities->map(function ($city) {
+                    return ['name' => $city->name];
+                })->toArray(),
+                'days' => $candidate->days->map(function ($day) {
+                    return ['name' => $day->name];
+                })->toArray(),
+                'portofolios' => $candidate->portofolios->map(function ($portfolio) {
+                    return [
+                        'title' => $portfolio->caption ?? 'Portfolio',
+                        'file' => $portfolio->file ?? null
+                    ];
+                })->toArray()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'candidate' => $candidateData
+            ]);
+        } catch (\Exception $e) {
+            Log::error('=== ERROR GET CANDIDATE DETAIL ===', [
+                'candidate_id' => $candidateId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
@@ -353,7 +507,7 @@ class CandidateMatchController extends Controller
                     ], 422);
                 }
 
-                if ($existingApplication->status === 'applied') {
+                if (in_array($existingApplication->status, ['Finished', 'Rejected', 'Invited', 'Withdrawn', 'Pending', 'Accepted'])) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Kandidat sudah melamar untuk lowongan ini'

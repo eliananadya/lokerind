@@ -71,8 +71,50 @@ class JobCandidateMatch extends Model
      * @param JobPostings $job
      * @return array
      */
+
     public static function calculateMatch(Candidates $candidate, JobPostings $job): array
     {
+        // ========================================
+        // PHASE 1: FILTER/CLEANING - DAY MATCH WAJIB
+        // ========================================
+        $jobDays = $job->jobDatess->pluck('days_id')->filter()->unique()->toArray();
+        $candidateDays = $candidate->preferredDays->pluck('id')->toArray();
+
+        // ✅ JIKA JOB PUNYA JADWAL HARI
+        if (!empty($jobDays)) {
+            $commonDays = array_intersect($candidateDays, $jobDays);
+
+            // ❌ TIDAK LOLOS FILTER - TIDAK ADA IRISAN HARI SAMA SEKALI
+            if (empty($commonDays)) {
+                Log::info('Candidate filtered out - No day match', [
+                    'candidate_id' => $candidate->id,
+                    'job_id' => $job->id,
+                    'candidate_days' => $candidateDays,
+                    'job_days' => $jobDays
+                ]);
+
+                // Return semua 0 karena tidak lolos filter
+                return [
+                    'city_match' => 0,
+                    'type_job_match' => 0,
+                    'industry_match' => 0,
+                    'salary_match' => 0,
+                    'skill_match' => 0,
+                    'day_match' => 0,
+                    'match_percentage' => 0,
+                ];
+            }
+
+            Log::info('Candidate passed day filter', [
+                'candidate_id' => $candidate->id,
+                'job_id' => $job->id,
+                'common_days' => $commonDays
+            ]);
+        }
+
+        // ========================================
+        // PHASE 2: CALCULATION - HITUNG 5 KRITERIA (JACCARD)
+        // ========================================
         $totalRequirements = 0; // |L|
         $matchedRequirements = 0; // |K ∩ L|
 
@@ -82,7 +124,7 @@ class JobCandidateMatch extends Model
         $industryMatch = 0;
         $salaryMatch = 0;
         $skillMatch = 0;
-        $dayMatch = 0;
+        $dayMatch = 0; // Tidak digunakan dalam perhitungan, hanya untuk record
 
         // ========================================
         // 1. CITY MATCH (1 requirement)
@@ -209,48 +251,18 @@ class JobCandidateMatch extends Model
         }
 
         // ========================================
-        // 6. DAY MATCH (N requirements - setiap hari dihitung)
-        // ========================================
-        try {
-            $jobDays = $job->jobDatess->pluck('days_id')->filter()->unique()->toArray();
-            $candidateDays = $candidate->preferredDays->pluck('id')->toArray();
-
-            if (!empty($jobDays)) {
-                $totalRequirements += count($jobDays); // Job butuh N hari
-
-                $commonDays = array_intersect($candidateDays, $jobDays);
-                $matchedRequirements += count($commonDays); // Berapa yang cocok
-
-                // Untuk fillable: binary (ada irisan atau tidak)
-                $dayMatch = count($commonDays) > 0 ? 1 : 0;
-
-                Log::debug('Day Match Calculation', [
-                    'candidate_days' => $candidateDays,
-                    'job_days' => $jobDays,
-                    'common_days' => $commonDays,
-                    'job_day_count' => count($jobDays),
-                    'matched_day_count' => count($commonDays),
-                    'match' => $dayMatch,
-                    'total_req' => $totalRequirements,
-                    'matched_req' => $matchedRequirements
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error in Day Match: ' . $e->getMessage());
-        }
-
-        // ========================================
-        // HITUNG PERSENTASE KECOCOKAN (SET THEORY)
+        // HITUNG PERSENTASE KECOCOKAN (JACCARD - 5 KRITERIA)
         // ========================================
         $matchPercentage = 0;
         if ($totalRequirements > 0) {
             $matchPercentage = ($matchedRequirements / $totalRequirements) * 100;
         }
 
-        Log::info('Match Calculation Complete (Set Theory)', [
+        Log::info('Match Calculation Complete (With Day Filter)', [
             'candidate_id' => $candidate->id,
             'job_id' => $job->id,
-            'total_requirements' => $totalRequirements, // |L|
+            'passed_day_filter' => true,
+            'total_requirements' => $totalRequirements, // |L| (5 kriteria)
             'matched_requirements' => $matchedRequirements, // |K ∩ L|
             'match_percentage' => round($matchPercentage, 2)
         ]);
@@ -261,7 +273,7 @@ class JobCandidateMatch extends Model
             'industry_match' => $industryMatch,
             'salary_match' => $salaryMatch,
             'skill_match' => $skillMatch,
-            'day_match' => $dayMatch,
+            'day_match' => 1, // Selalu 1 karena sudah lolos filter
             'match_percentage' => round($matchPercentage, 2),
         ];
     }

@@ -125,9 +125,10 @@ Route::middleware(['auth', 'role:user'])->group(function () {
     Route::post('/applications/{id}/rate-company', [HistoryController::class, 'rateCompany'])
         ->name('applications.rate.company');
 
-    // Invitations
-    Route::get('/invitations', [HistoryController::class, 'getInvitations'])->name('invitations.get');
-    Route::post('/invitations/{id}/accept', [HistoryController::class, 'acceptInvitation'])->name('invitations.accept');
+    Route::post('/applications/{id}/reject-invitation', [HistoryController::class, 'rejectInvitation'])
+        ->name('applications.reject-invitation');
+    Route::post('/applications/{id}/accept-invitation', [HistoryController::class, 'acceptInvitation'])
+        ->name('applications.accept-invitation');
 
     // Profile & Candidate Management
     Route::get('/profile', [AuthControllerUser::class, 'index'])->name('profile.index');
@@ -175,7 +176,8 @@ Route::middleware(['auth', 'role:company'])->prefix('company')->name('company.')
     Route::post('/applications/send-email', [DashboardCompanyController::class, 'sendEmail'])->name('applications.send-email');
     Route::get('/applications/{id}/detail', [DashboardCompanyController::class, 'getApplicationDetail'])->name('applications.detail');
     Route::post('/applications/{id}/update-status', [DashboardCompanyController::class, 'updateApplicationStatus'])->name('applications.update-status');
-
+    Route::get('/candidates/{id}/rating-detail', [DashboardCompanyController::class, 'getCandidateRatingDetail'])
+        ->name('candidates.rating-detail');
     // Job Posting Management
     Route::get('/jobs', [JobPostingController::class, 'index'])->name('jobs.index');
     Route::get('/jobs/create', [JobPostingController::class, 'create'])->name('jobs.create');
@@ -186,6 +188,7 @@ Route::middleware(['auth', 'role:company'])->prefix('company')->name('company.')
     Route::get('/jobs/{id}/detail', [JobPostingController::class, 'getDetail'])->name('jobs.detail');
     Route::delete('/jobs/{id}', [JobPostingController::class, 'destroy'])->name('jobs.destroy');
 
+
     // Candidate Recommendations
     Route::get('/candidates/recommendations', [CandidateRecommendationController::class, 'index'])->name('candidates.recommendations');
     Route::get('/candidates/get-recommendations', [CandidateRecommendationController::class, 'getCandidates'])->name('candidates.get');
@@ -195,9 +198,13 @@ Route::middleware(['auth', 'role:company'])->prefix('company')->name('company.')
 
     // Candidate Match
     Route::get('/candidates/match', [CandidateMatchController::class, 'index'])->name('candidates.match');
-    Route::get('/candidates/{candidate}/detail', [CandidateMatchController::class, 'getCandidateDetail'])->name('candidates.match.detail');
     Route::post('/candidates/{candidate}/invite', [CandidateMatchController::class, 'inviteCandidate'])->name('candidates.invite.action');
     Route::post('/candidates/invite/{candidate}', [CandidateMatchController::class, 'inviteCandidate'])->name('candidates.invite.post');
+    Route::get('/candidates/match/detail/{id}', [CandidateMatchController::class, 'getCandidateDetail'])
+        ->name('candidates.match.detail');
+    Route::get('/candidates/match/rating-detail/{id}', [CandidateMatchController::class, 'getCandidateRatingDetail'])
+        ->name('candidates.match.rating-detail');
+
 
     // Riwayat
     Route::get('/riwayat', [RiwayatCompanyController::class, 'index'])->name('riwayat.index');
@@ -205,6 +212,7 @@ Route::middleware(['auth', 'role:company'])->prefix('company')->name('company.')
     Route::post('/riwayat/rate/{applicationId}', [RiwayatCompanyController::class, 'rateCandidate'])->name('riwayat.rate');
     Route::post('/riwayat/report/{application}', [RiwayatCompanyController::class, 'reportReview'])->name('riwayat.report');
     Route::post('/riwayat/block/{application}', [RiwayatCompanyController::class, 'blockUser'])->name('riwayat.block');
+    Route::delete('/riwayat/unblock/{id}', [RiwayatCompanyController::class, 'unblockUser'])->name('riwayat.unblock');
 
     // Profile
     Route::get('/profile', [ProfileCompanyController::class, 'index'])->name('profile');

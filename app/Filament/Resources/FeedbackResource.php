@@ -22,7 +22,7 @@ class FeedbackResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Umpan Balik';
 
-    protected static ?string $navigationGroup = 'Feedback & Laporan';
+    protected static ?string $navigationGroup = 'Data Master';
 
     protected static ?int $navigationSort = 1;
     public static function form(Form $form): Form

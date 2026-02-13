@@ -13,7 +13,19 @@ class ListReports extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Tidak ada create action
         ];
+    }
+
+    // Tambahkan ini untuk reset default filter
+    protected function getTableFiltersFormColumns(): int
+    {
+        return 3; // Opsional: atur jumlah kolom filter
+    }
+
+    // PENTING: Hapus filter default
+    public function getTableFilters(): array
+    {
+        return []; // Kosongkan supaya tidak ada default filter
     }
 }

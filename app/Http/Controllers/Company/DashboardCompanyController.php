@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Candidates;
+use App\Models\Feedback;
+use App\Models\FeedbackApplication;
 use App\Mail\ApplicationStatusUpdated;
 
 class DashboardCompanyController extends Controller
@@ -843,61 +846,272 @@ class DashboardCompanyController extends Controller
     public function updateApplicationStatus(Request $request, $id)
     {
         try {
-            $request->validate([
-                'status' => 'required|in:Applied,Reviewed,Interview,Accepted,Rejected,Withdrawn,Finished,invited'
-            ]);
+            Log::info('=== START UPDATE APPLICATION STATUS ===');
+            Log::info('Application ID: ' . $id);
+            Log::info('Request Data: ' . json_encode($request->all()));
 
             $user = Auth::user();
+            if (!$user) {
+                Log::error('User not authenticated');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak terautentikasi'
+                ], 401);
+            }
+
             $company = Companies::where('user_id', $user->id)->first();
-
             if (!$company) {
-                return response()->json(['success' => false, 'message' => 'Company not found'], 404);
+                Log::error('Company not found for user: ' . $user->id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perusahaan tidak ditemukan'
+                ], 404);
             }
 
-            $application = Applications::whereHas('jobPosting', function ($query) use ($company) {
-                $query->where('companies_id', $company->id);
-            })->with('jobPosting')->findOrFail($id);
+            // Get application with eager loading
+            $application = Applications::with(['jobPosting', 'candidate.user'])
+                ->whereHas('jobPosting', function ($query) use ($company) {
+                    $query->where('companies_id', $company->id);
+                })
+                ->find($id);
 
-            $oldStatus = $application->status;
-            $newStatus = $request->status;
-
-            // Handle slot changes
-            if ($newStatus === 'Accepted' && $oldStatus !== 'Accepted') {
-                $jobPosting = $application->jobPosting;
-                if ($jobPosting->slot <= 0) {
-                    return response()->json(['success' => false, 'message' => 'Slot penuh'], 400);
-                }
-                $jobPosting->slot -= 1;
-                $jobPosting->save();
+            if (!$application) {
+                Log::error('Application not found: ' . $id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lamaran tidak ditemukan'
+                ], 404);
             }
 
-            if ($oldStatus === 'Accepted' && $newStatus !== 'Accepted') {
-                $jobPosting = $application->jobPosting;
-                $jobPosting->slot += 1;
-                $jobPosting->save();
+            $job = $application->jobPosting;
+            if (!$job) {
+                Log::error('Job posting not found for application: ' . $id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lowongan tidak ditemukan'
+                ], 404);
             }
 
-            $application->status = $newStatus;
-            $application->save();
+            Log::info('Job ID: ' . $job->id . ', Status: ' . $job->status . ', Has Interview: ' . ($job->has_interview ? 'Yes' : 'No'));
 
-            Log::info('Application status updated', [
-                'application_id' => $id,
-                'old_status' => $oldStatus,
-                'new_status' => $newStatus,
-                'company_id' => $company->id
+            // CHECK IF JOB IS CLOSED
+            if ($job->status === 'Closed') {
+                Log::warning('Job is closed, cannot update');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat mengubah status lamaran karena lowongan sudah ditutup.'
+                ], 403);
+            }
+
+            // ✅ VALIDATION - Support both old and new status values
+            $validator = \Validator::make($request->all(), [
+                'status' => 'required|in:Selection,Accepted,Rejected,Applied,Reviewed,Interview,Withdrawn,Finished,invited',
+                'message' => 'nullable|string|max:1000'
             ]);
+
+            if ($validator->fails()) {
+                Log::error('Validation failed: ' . json_encode($validator->errors()));
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validatedData = $validator->validated();
+            Log::info('Validated Data: ' . json_encode($validatedData));
+
+            // ✅ VALIDASI TAMBAHAN - Selection only for jobs with interview
+            if ($request->status === 'Selection' && !$job->has_interview) {
+                Log::warning('Selection not allowed for job without interview');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Status Selection tidak diperbolehkan untuk lowongan tanpa interview.'
+                ], 422);
+            }
+
+            // ✅ SLOT MANAGEMENT - Handle Accepted status
+            $oldStatus = $application->status;
+            $newStatus = $validatedData['status'];
+
+            // UPDATE APPLICATION STATUS
+            Log::info('Before update - Current status: ' . $application->status);
+
+            // ✅ PERBAIKAN: Pastikan message di-trim dan dibersihkan
+            $messageToSave = isset($validatedData['message']) && trim($validatedData['message']) !== ''
+                ? trim($validatedData['message'])
+                : null;
+
+            $updateData = [
+                'status' => $newStatus
+            ];
+
+            // Only update message if it's not null
+            if ($messageToSave !== null) {
+                $updateData['message'] = $messageToSave;
+            }
+
+            $updated = $application->update($updateData);
+
+            if (!$updated) {
+                Log::error('Failed to update application');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui status lamaran'
+                ], 500);
+            }
+
+            // Refresh the model to get updated data
+            $application->refresh();
+
+            Log::info('After update - New status: ' . $application->status);
+            Log::info('=== UPDATE SUCCESS ===');
+
+            // ✅ STATUS MESSAGES
+            $statusMessages = [
+                'Selection' => 'Kandidat berhasil dipilih untuk tahap seleksi/interview!',
+                'Accepted' => 'Kandidat berhasil diterima!',
+                'Rejected' => 'Kandidat berhasil ditolak.',
+                'Applied' => 'Status berhasil diubah ke Applied',
+                'Reviewed' => 'Status berhasil diubah ke Reviewed',
+                'Interview' => 'Status berhasil diubah ke Interview',
+                'Withdrawn' => 'Status berhasil diubah ke Withdrawn',
+                'Finished' => 'Status berhasil diubah ke Finished',
+                'invited' => 'Kandidat berhasil diundang'
+            ];
 
             return response()->json([
                 'success' => true,
-                'message' => 'Status berhasil diupdate',
-                'data' => ['application' => $application]
+                'message' => $statusMessages[$newStatus] ?? 'Status berhasil diperbarui',
+                'status' => $application->status,
+                'data' => [
+                    'application_id' => $application->id,
+                    'new_status' => $application->status,
+                    'message' => $application->message,
+                    'remaining_slots' => $job->slot
+                ]
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('=== MODEL NOT FOUND ERROR ===');
+            Log::error('Message: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('=== VALIDATION ERROR ===');
+            Log::error('Validation errors: ' . json_encode($e->errors()));
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('=== EXCEPTION ERROR ===');
+            Log::error('Message: ' . $e->getMessage());
+            Log::error('File: ' . $e->getFile());
+            Log::error('Line: ' . $e->getLine());
+            Log::error('Trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    // File: app/Http/Controllers/Company/DashboardCompanyController.php
+
+    // Tambahkan di dalam class DashboardCompanyController
+
+    public function getCandidateRatingDetail($candidateId)
+    {
+        try {
+            $candidate = Candidates::with([
+                'user',
+                'skills',
+                'preferredCities',
+                'preferredIndustries',
+                'days',
+                'portofolios'
+            ])->findOrFail($candidateId);
+
+            // ✅ Ambil semua aplikasi kandidat yang sudah selesai dengan rating
+            $applications = Applications::where('candidates_id', $candidateId)
+                ->whereIn('status', ['Accepted', 'Finished'])
+                ->whereNotNull('rating_candidates')
+                ->with([
+                    'jobPosting.company.user',
+                    'jobPosting.typeJobs',
+                    'jobPosting.city',
+                    'feedbackApplications' => function ($q) {
+                        $q->where('given_by', 'company')->with('feedback');
+                    }
+                ])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            // ✅ Hitung average rating
+            $averageRating = $applications->avg('rating_candidates');
+
+            // ✅ Rating breakdown (berapa banyak rating 1-5)
+            $ratingBreakdown = [
+                5 => $applications->where('rating_candidates', 5)->count(),
+                4 => $applications->where('rating_candidates', 4)->count(),
+                3 => $applications->where('rating_candidates', 3)->count(),
+                2 => $applications->where('rating_candidates', 2)->count(),
+                1 => $applications->where('rating_candidates', 1)->count(),
+            ];
+
+            // ✅ Ambil semua feedback yang diberikan perusahaan
+            $candidateFeedbacks = Feedback::where('for', 'candidate')->get();
+            $feedbackCounts = [];
+
+            foreach ($candidateFeedbacks as $feedback) {
+                $count = FeedbackApplication::where('feedback_id', $feedback->id)
+                    ->where('given_by', 'company')
+                    ->whereHas('application', function ($q) use ($candidateId) {
+                        $q->where('candidates_id', $candidateId);
+                    })
+                    ->count();
+
+                if ($count > 0) {
+                    $feedbackCounts[] = [
+                        'name' => $feedback->name,
+                        'count' => $count
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'candidate' => $candidate,
+                    'average_rating' => round($averageRating ?? 0, 1),
+                    'total_ratings' => $applications->count(),
+                    'rating_breakdown' => $ratingBreakdown,
+                    'feedback_counts' => $feedbackCounts,
+                    'reviews' => $applications->map(function ($app) {
+                        return [
+                            'id' => $app->id,
+                            'company_name' => $app->jobPosting->company->name ?? 'Unknown',
+                            'job_title' => $app->jobPosting->title ?? '-',
+                            'rating' => $app->rating_candidates,
+                            'review' => $app->review_candidate,
+                            'date' => $app->updated_at->format('d M Y'),
+                            'feedbacks' => $app->feedbackApplications->map(function ($fa) {
+                                return $fa->feedback->name ?? '-';
+                            })
+                        ];
+                    })
+                ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error updating status', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['success' => false, 'message' => 'Failed'], 500);
+            Log::error('Error getting candidate rating detail: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data kandidat'
+            ], 500);
         }
     }
 }

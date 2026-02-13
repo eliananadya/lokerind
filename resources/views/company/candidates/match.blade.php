@@ -1,586 +1,691 @@
 @extends('layouts.main')
 
-@section('title', 'Kandidat yang Cocok')
-
-{{-- ✅ SELECT2 CDN --}}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-<style>
-    :root {
-        --primary-blue: #14489b;
-        --secondary-blue: #244770;
-        --dark-blue: #1e3992;
-        --light-blue: #dbeafe;
-        --bg-blue: #eff6ff;
-        --excellent: #10b981;
-        --good: #3b82f6;
-        --fair: #f59e0b;
-    }
-
-    body {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        min-height: 100vh;
-    }
-
-    /* ===== HEADER ===== */
-    .page-header {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        color: white;
-        padding: 2.5rem 0;
-        margin-bottom: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(20, 72, 155, 0.3);
-    }
-
-    .page-title {
-        font-size: 2.5rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-    }
-
-    .page-subtitle {
-        font-size: 1.1rem;
-        opacity: 0.9;
-    }
-
-    /* ===== STATS CARDS ===== */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s;
-        border-left: 5px solid;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
-        border-radius: 50%;
-        transform: translate(30%, -30%);
-    }
-
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-
-    .stat-card.excellent {
-        border-left-color: var(--excellent);
-    }
-
-    .stat-card.good {
-        border-left-color: var(--good);
-    }
-
-    .stat-card.fair {
-        border-left-color: var(--fair);
-    }
-
-    .stat-card.total {
-        border-left-color: var(--primary-blue);
-    }
-
-    .stat-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-        opacity: 0.8;
-    }
-
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        margin-bottom: 0.25rem;
-    }
-
-    .stat-label {
-        color: #6b7280;
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    /* ===== JOB SELECTOR ===== */
-    .job-selector-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        margin-bottom: 2rem;
-    }
-
-    /* ✅ SELECT2 CUSTOM STYLING */
-    .select2-container--default .select2-selection--single {
-        border: 2px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 0.5rem;
-        height: auto;
-        min-height: 50px;
-        transition: all 0.3s;
-    }
-
-    .select2-container--default .select2-selection--single:focus,
-    .select2-container--default.select2-container--open .select2-selection--single {
-        border-color: var(--primary-blue);
-        box-shadow: 0 0 0 3px rgba(20, 72, 155, 0.1);
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: #111827;
-        line-height: 1.5;
-        padding-left: 0.5rem;
-        font-size: 1.05rem;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 100%;
-        right: 10px;
-    }
-
-    .select2-dropdown {
-        border: 2px solid var(--primary-blue);
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background-color: var(--primary-blue);
-    }
-
-    .select2-container--default .select2-search--dropdown .select2-search__field {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 0.5rem;
-    }
-
-    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
-        border-color: var(--primary-blue);
-        outline: none;
-    }
-
-    /* ===== CANDIDATE CARD ===== */
-    .candidate-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .candidate-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 5px;
-        background: linear-gradient(90deg, var(--primary-blue), var(--dark-blue));
-        transform: scaleX(0);
-        transition: transform 0.3s;
-    }
-
-    .candidate-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(20, 72, 155, 0.15);
-    }
-
-    .candidate-card:hover::before {
-        transform: scaleX(1);
-    }
-
-    .candidate-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: 700;
-        box-shadow: 0 4px 12px rgba(20, 72, 155, 0.3);
-        margin: 0 auto 1rem;
-    }
-
-    .candidate-name {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #111827;
-        text-align: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .candidate-email {
-        color: #6b7280;
-        font-size: 0.9rem;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-
-    /* ===== MATCH SCORE ===== */
-    .match-score-container {
-        text-align: center;
-        margin: 1.5rem 0;
-        padding: 1rem;
-        background: var(--bg-blue);
-        border-radius: 10px;
-    }
-
-    .match-score {
-        font-size: 3rem;
-        font-weight: 800;
-        line-height: 1;
-        margin-bottom: 0.5rem;
-    }
-
-    .match-score.excellent {
-        color: var(--excellent);
-    }
-
-    .match-score.good {
-        color: var(--good);
-    }
-
-    .match-score.fair {
-        color: var(--fair);
-    }
-
-    .match-label {
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #6b7280;
-    }
-
-    .match-badge {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.85rem;
-        margin-top: 0.5rem;
-    }
-
-    .match-badge.excellent {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-    }
-
-    .match-badge.good {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
-    }
-
-    .match-badge.fair {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: white;
-    }
-
-    /* ===== SKILLS & INFO ===== */
-    .info-section {
-        margin: 1rem 0;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 10px;
-    }
-
-    .info-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #6b7280;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-    }
-
-    .skill-tag {
-        display: inline-block;
-        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-        color: #1e40af;
-        padding: 0.4rem 0.8rem;
-        border-radius: 15px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin: 0.25rem;
-    }
-
-    .info-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-        color: #4b5563;
-    }
-
-    .info-item i {
-        color: var(--primary-blue);
-    }
-
-    /* ===== BUTTONS ===== */
-    .btn-invite {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
-    .btn-invite:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(20, 72, 155, 0.3);
-        color: white;
-    }
-
-    .btn-view-profile {
-        background: white;
-        color: var(--primary-blue);
-        border: 2px solid var(--primary-blue);
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-    }
-
-    .btn-view-profile:hover {
-        background: var(--bg-blue);
-        color: var(--dark-blue);
-        transform: translateY(-2px);
-    }
-
-    /* ===== MODAL DETAIL ===== */
-    .modal-header-custom {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        color: white;
-        border-radius: 15px 15px 0 0;
-    }
-
-    .swal2-popup {
-        border-radius: 15px !important;
-    }
-
-    .detail-section {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1.5rem;
-    }
-
-    .detail-section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--primary-blue);
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .detail-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .detail-item:last-child {
-        border-bottom: none;
-    }
-
-    .detail-label {
-        font-weight: 600;
-        color: #6b7280;
-    }
-
-    .detail-value {
-        color: #111827;
-        font-weight: 500;
-        text-align: right;
-    }
-
-    .portfolio-item {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-        border: 2px solid #e5e7eb;
-        transition: all 0.3s;
-    }
-
-    .portfolio-item:hover {
-        border-color: var(--primary-blue);
-        box-shadow: 0 4px 12px rgba(20, 72, 155, 0.1);
-    }
-
-    .portfolio-title {
-        font-weight: 700;
-        color: var(--primary-blue);
-        margin-bottom: 0.5rem;
-    }
-
-    .portfolio-desc {
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .portfolio-link {
-        color: var(--primary-blue);
-        text-decoration: none;
-        font-size: 0.9rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .portfolio-link:hover {
-        text-decoration: underline;
-    }
-
-    /* ===== EMPTY STATE ===== */
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: #9ca3af;
-    }
-
-    .empty-state i {
-        font-size: 5rem;
-        margin-bottom: 1.5rem;
-        opacity: 0.5;
-    }
-
-    .empty-state h4 {
-        color: #6b7280;
-        margin-bottom: 0.5rem;
-    }
-
-    /* ===== LOADING ===== */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-    }
-
-    .loading-overlay.active {
-        display: flex;
-    }
-
-    .spinner {
-        width: 60px;
-        height: 60px;
-        border: 5px solid #e5e7eb;
-        border-top-color: var(--primary-blue);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 768px) {
-        .page-title {
-            font-size: 1.75rem;
+@section('content')
+    <style>
+        .rating-summary-card {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+        .rating-number {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
         }
 
-        .match-score {
-            font-size: 2rem;
+        .rating-stars {
+            font-size: 1.5rem;
+            color: #fbbf24;
+            margin-bottom: 0.5rem;
         }
 
-        .detail-item {
-            flex-direction: column;
+        .rating-count {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .rating-bar-container {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .rating-bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .rating-bar-label {
+            min-width: 60px;
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .rating-bar {
+            flex: 1;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 1rem;
+        }
+
+        .rating-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+        }
+
+        .rating-bar-count {
+            min-width: 40px;
+            text-align: right;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .feedback-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin: 0.25rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .feedback-badge i {
+            color: var(--primary-blue);
+        }
+
+        .review-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .review-company {
+            font-weight: 600;
+            color: #111827;
+            font-size: 1.05rem;
+        }
+
+        .review-job {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .review-rating {
+            display: flex;
+            align-items: center;
             gap: 0.5rem;
         }
 
-        .detail-value {
-            text-align: left;
-        }
-    }
-
-    /* ===== ANIMATIONS ===== */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
+        .review-rating .stars {
+            color: #fbbf24;
+            font-size: 1.1rem;
         }
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        .review-text {
+            color: #4b5563;
+            line-height: 1.6;
+            margin-bottom: 1rem;
         }
-    }
 
-    .candidate-card {
-        animation: fadeInUp 0.5s ease-out;
-    }
+        .review-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f3f4f6;
+        }
 
-    .candidate-card:nth-child(1) {
-        animation-delay: 0.05s;
-    }
+        .review-date {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
 
-    .candidate-card:nth-child(2) {
-        animation-delay: 0.1s;
-    }
+        .feedback-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
 
-    .candidate-card:nth-child(3) {
-        animation-delay: 0.15s;
-    }
+        .feedback-tag {
+            padding: 0.25rem 0.75rem;
+            background: #ede9fe;
+            color: #7c3aed;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
 
-    .candidate-card:nth-child(4) {
-        animation-delay: 0.2s;
-    }
-</style>
+        .no-reviews {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #9ca3af;
+        }
 
-@section('content')
+        .no-reviews i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .tab-content-rating {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .tab-content-rating::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tab-content-rating::-webkit-scrollbar-track {
+            background: #f3f4f6;
+            border-radius: 10px;
+        }
+
+        .tab-content-rating::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+            border-radius: 10px;
+        }
+
+        .avatar-image-large {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .avatar-circle-large {
+            width: 120px;
+            height: 120px;
+            font-size: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge-lg {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .search-input {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            padding-left: 2.5rem;
+            width: 100%;
+            font-size: 0.95rem;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-blue);
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.5rem;
+            height: auto;
+            min-height: 48px;
+        }
+
+        .select2-container--default .select2-selection--single:focus,
+        .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: var(--primary-blue);
+            outline: none;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #111827;
+            line-height: 1.5;
+            padding-left: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%;
+            right: 10px;
+        }
+
+        .select2-dropdown {
+            border: 2px solid var(--primary-blue);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: var(--primary-blue);
+        }
+
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 0.5rem;
+        }
+
+        .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+            border-color: var(--primary-blue);
+            outline: none;
+        }
+
+        .candidate-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            height: 100%;
+            border: 2px solid #f3f4f6;
+        }
+
+        .candidate-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0 auto 1rem;
+        }
+
+        .candidate-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #111827;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .candidate-email {
+            color: #6b7280;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .match-score-container {
+            text-align: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: var(--bg-blue);
+            border-radius: 8px;
+            border: 2px solid var(--light-blue);
+        }
+
+        .match-score {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .match-score.excellent {
+            color: #10b981;
+        }
+
+        .match-score.good {
+            color: #3b82f6;
+        }
+
+        .match-score.fair {
+            color: #f59e0b;
+        }
+
+        .match-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+        }
+
+        .match-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .match-badge.excellent {
+            background: #10b981;
+            color: white;
+        }
+
+        .match-badge.good {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .match-badge.fair {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .info-section {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .skill-tag {
+            display: inline-block;
+            background: var(--light-blue);
+            color: var(--primary-blue);
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
+
+        .info-item i {
+            color: var(--primary-blue);
+        }
+
+        .btn-invite {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-view-profile {
+            background: white;
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .modal-header-custom {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .detail-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border: 2px solid #f3f4f6;
+        }
+
+        .detail-section-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--light-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detail-table {
+            width: 100%;
+        }
+
+        .detail-table tr {
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .detail-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .detail-table td {
+            padding: 0.875rem 0;
+            vertical-align: top;
+        }
+
+        .detail-table td:first-child {
+            font-weight: 600;
+            color: #6b7280;
+            width: 40%;
+        }
+
+        .detail-table td:last-child {
+            color: #111827;
+        }
+
+        .badge-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .badge-custom {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-primary {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .nav-tabs {
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6b7280;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 3px solid transparent;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-blue);
+            border-bottom-color: var(--primary-blue);
+            background: transparent;
+        }
+
+        .modal-profile-header {
+            background: linear-gradient(135deg, var(--bg-blue), white);
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .modal-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-email {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .portfolio-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 2px solid #e5e7eb;
+        }
+
+        .portfolio-title {
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .portfolio-desc {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .portfolio-link {
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #9ca3af;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h4 {
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .match-score {
+                font-size: 2rem;
+            }
+
+            .detail-item {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .detail-value {
+                text-align: left;
+            }
+
+            .filter-card {
+                padding: 1rem;
+            }
+        }
+    </style>
+
     <div class="container py-4">
-        {{-- PAGE HEADER --}}
         <div class="page-header">
             <div class="container">
                 <h1 class="page-title">
@@ -588,70 +693,48 @@
                     Kandidat yang Cocok
                 </h1>
                 <p class="page-subtitle">
-                    Temukan kandidat terbaik yang sesuai dengan lowongan Anda menggunakan AI Matching
+                    Ajak Kandidat langsung untuk dapat diinvite
                 </p>
             </div>
         </div>
 
-        {{-- STATISTICS CARDS --}}
-        <div class="stats-grid">
-            <div class="stat-card total">
-                <div class="stat-icon">
-                    <i class="bi bi-people"></i>
+        <div class="filter-card">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="filter-label">
+                        <i class="bi bi-briefcase me-2"></i>Pilih Lowongan
+                    </label>
+                    <select class="form-select job-select" id="jobSelector">
+                        @forelse($jobPostings as $job)
+                            <option value="{{ $job->id }}"
+                                {{ $selectedJob && $selectedJob->id == $job->id ? 'selected' : '' }}>
+                                {{ $job->title }} - {{ $job->city->name ?? 'Lokasi tidak tersedia' }}
+                                ({{ $job->applications->count() }} pelamar)
+                            </option>
+                        @empty
+                            <option value="">Tidak ada lowongan aktif</option>
+                        @endforelse
+                    </select>
                 </div>
-                <div class="stat-value">{{ $stats['total_matches'] }}</div>
-                <div class="stat-label">Total Kandidat Cocok</div>
-            </div>
-
-            <div class="stat-card excellent">
-                <div class="stat-icon">
-                    <i class="bi bi-star-fill"></i>
+                <div class="col-md-6">
+                    <label class="filter-label">
+                        <i class="bi bi-search me-2"></i>Cari Nama Kandidat
+                    </label>
+                    <div style="position: relative;">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="searchCandidate" class="search-input"
+                            placeholder="Ketik nama kandidat...">
+                    </div>
                 </div>
-                <div class="stat-value">{{ $stats['excellent_matches'] }}</div>
-                <div class="stat-label">Sangat Cocok (80%+)</div>
             </div>
-
-            <div class="stat-card good">
-                <div class="stat-icon">
-                    <i class="bi bi-hand-thumbs-up-fill"></i>
-                </div>
-                <div class="stat-value">{{ $stats['good_matches'] }}</div>
-                <div class="stat-label">Cocok (60-79%)</div>
-            </div>
-
-            <div class="stat-card fair">
-                <div class="stat-icon">
-                    <i class="bi bi-check-circle-fill"></i>
-                </div>
-                <div class="stat-value">{{ $stats['fair_matches'] }}</div>
-                <div class="stat-label">Cukup Cocok (30-59%)</div>
-            </div>
-        </div>
-
-        {{-- JOB SELECTOR --}}
-        <div class="job-selector-card">
-            <label class="form-label fw-bold mb-3">
-                <i class="bi bi-briefcase me-2"></i>Pilih Lowongan:
-            </label>
-            <select class="form-select job-select" id="jobSelector">
-                @forelse($jobPostings as $job)
-                    <option value="{{ $job->id }}"
-                        {{ $selectedJob && $selectedJob->id == $job->id ? 'selected' : '' }}>
-                        {{ $job->title }} - {{ $job->city->name ?? 'Lokasi tidak tersedia' }}
-                        ({{ $job->applications->count() }} pelamar)
-                    </option>
-                @empty
-                    <option value="">Tidak ada lowongan aktif</option>
-                @endforelse
-            </select>
         </div>
 
         {{-- CANDIDATE CARDS --}}
         @if ($selectedJob)
             @if ($matchingCandidates->count() > 0)
-                <div class="row g-4">
+                <div class="row g-4" id="candidateList">
                     @foreach ($matchingCandidates as $candidate)
-                        <div class="col-md-6 col-lg-4">
+                        <div class="col-md-6 col-lg-4 candidate-item" data-name="{{ strtolower($candidate->name) }}">
                             <div class="candidate-card">
                                 {{-- Avatar --}}
                                 <div class="candidate-avatar">
@@ -709,8 +792,23 @@
                                     <div class="info-item">
                                         <i class="bi bi-gender-ambiguous"></i>
                                         <strong>Gender:</strong>
-                                        <span>{{ $candidate->gender }}</span>
+                                        <span>{{ $candidate->gender ?? '-' }}</span>
                                     </div>
+                                    @if ($candidate->birth_date)
+                                        <div class="info-item">
+                                            <i class="bi bi-calendar-event"></i>
+                                            <strong>Lahir:</strong>
+                                            <span>{{ \Carbon\Carbon::parse($candidate->birth_date)->format('d M Y') }}</span>
+                                        </div>
+                                    @endif
+                                    @if ($candidate->min_height || $candidate->min_weight)
+                                        <div class="info-item">
+                                            <i class="bi bi-rulers"></i>
+                                            <strong>TB/BB:</strong>
+                                            <span>{{ $candidate->min_height ?? '-' }} cm /
+                                                {{ $candidate->min_weight ?? '-' }} kg</span>
+                                        </div>
+                                    @endif
                                     @if ($candidate->min_salary)
                                         <div class="info-item">
                                             <i class="bi bi-cash"></i>
@@ -718,17 +816,90 @@
                                             <span>Rp {{ number_format($candidate->min_salary, 0, ',', '.') }}</span>
                                         </div>
                                     @endif
-                                    <div class="info-item">
-                                        <i class="bi bi-translate"></i>
-                                        <strong>English:</strong>
-                                        <span>{{ $candidate->level_english }}</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <i class="bi bi-chat-dots"></i>
-                                        <strong>Mandarin:</strong>
-                                        <span>{{ $candidate->level_mandarin }}</span>
-                                    </div>
                                 </div>
+
+                                {{-- Preferensi Lokasi --}}
+                                @if ($candidate->preferred_cities && $candidate->preferred_cities->count() > 0)
+                                    <div class="info-section">
+                                        <div class="info-label">
+                                            <i class="bi bi-geo-alt me-1"></i>Lokasi Preferensi
+                                        </div>
+                                        <div>
+                                            @foreach ($candidate->preferred_cities->take(3) as $city)
+                                                <span class="skill-tag">{{ $city->name }}</span>
+                                            @endforeach
+                                            @if ($candidate->preferred_cities->count() > 3)
+                                                <span
+                                                    class="skill-tag">+{{ $candidate->preferred_cities->count() - 3 }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Industri Diminati --}}
+                                @if ($candidate->preferred_industries && $candidate->preferred_industries->count() > 0)
+                                    <div class="info-section">
+                                        <div class="info-label">
+                                            <i class="bi bi-building me-1"></i>Industri Diminati
+                                        </div>
+                                        <div>
+                                            @foreach ($candidate->preferred_industries->take(3) as $industry)
+                                                <span class="skill-tag">{{ $industry->name }}</span>
+                                            @endforeach
+                                            @if ($candidate->preferred_industries->count() > 3)
+                                                <span
+                                                    class="skill-tag">+{{ $candidate->preferred_industries->count() - 3 }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Tipe Pekerjaan --}}
+                                @if ($candidate->preferred_type_jobs && $candidate->preferred_type_jobs->count() > 0)
+                                    <div class="info-section">
+                                        <div class="info-label">
+                                            <i class="bi bi-briefcase me-1"></i>Tipe Pekerjaan
+                                        </div>
+                                        <div>
+                                            @foreach ($candidate->preferred_type_jobs->take(3) as $typeJob)
+                                                <span class="skill-tag">{{ $typeJob->name }}</span>
+                                            @endforeach
+                                            @if ($candidate->preferred_type_jobs->count() > 3)
+                                                <span
+                                                    class="skill-tag">+{{ $candidate->preferred_type_jobs->count() - 3 }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Hari Kerja --}}
+                                @if ($candidate->days && $candidate->days->count() > 0)
+                                    <div class="info-section">
+                                        <div class="info-label">
+                                            <i class="bi bi-calendar-week me-1"></i>Hari Kerja
+                                        </div>
+                                        <div>
+                                            @foreach ($candidate->days->take(4) as $day)
+                                                <span class="skill-tag">{{ $day->name }}</span>
+                                            @endforeach
+                                            @if ($candidate->days->count() > 4)
+                                                <span class="skill-tag">+{{ $candidate->days->count() - 4 }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Deskripsi Singkat --}}
+                                @if ($candidate->description)
+                                    <div class="info-section">
+                                        <div class="info-label">
+                                            <i class="bi bi-file-text me-1"></i>Tentang
+                                        </div>
+                                        <p class="mb-0" style="font-size: 0.85rem; color: #4b5563; line-height: 1.5;">
+                                            {{ Str::limit($candidate->description, 120) }}
+                                        </p>
+                                    </div>
+                                @endif
 
                                 {{-- Actions --}}
                                 <button class="btn btn-invite btn-invite-candidate"
@@ -738,7 +909,8 @@
                                     Undang Kandidat
                                 </button>
 
-                                <button class="btn btn-view-profile" onclick="viewCandidateDetail({{ $candidate->id }})">
+                                <button class="btn btn-view-profile"
+                                    onclick="viewCandidateDetail({{ $candidate->candidates_id ?? $candidate->id }})">
                                     <i class="bi bi-eye"></i>
                                     Lihat Detail
                                 </button>
@@ -766,21 +938,15 @@
             </div>
         @endif
     </div>
-
-    {{-- LOADING OVERLAY --}}
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
 @endsection
 
-{{-- ✅ LOAD SCRIPTS --}}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     $(document).ready(function() {
-        // ✅ INITIALIZE SELECT2
+        // INITIALIZE SELECT2
         $('#jobSelector').select2({
             placeholder: 'Cari lowongan...',
             allowClear: false,
@@ -795,7 +961,7 @@
             }
         });
 
-        // ===== JOB SELECTOR CHANGE =====
+        // JOB SELECTOR CHANGE
         $('#jobSelector').on('change', function() {
             const jobId = $(this).val();
             if (jobId) {
@@ -804,7 +970,38 @@
             }
         });
 
+        // SEARCH CANDIDATE BY NAME
+        $('#searchCandidate').on('keyup', function() {
+            const searchValue = $(this).val().toLowerCase();
 
+            $('.candidate-item').each(function() {
+                const candidateName = $(this).data('name');
+
+                if (candidateName.includes(searchValue)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+
+            // Show empty state if no results
+            const visibleCandidates = $('.candidate-item:visible').length;
+            if (visibleCandidates === 0 && searchValue !== '') {
+                if ($('#noSearchResults').length === 0) {
+                    $('#candidateList').after(`
+                        <div id="noSearchResults" class="empty-state">
+                            <i class="bi bi-search"></i>
+                            <h4>Tidak Ada Hasil</h4>
+                            <p>Tidak ada kandidat dengan nama "${searchValue}"</p>
+                        </div>
+                    `);
+                }
+            } else {
+                $('#noSearchResults').remove();
+            }
+        });
+
+        // INVITE CANDIDATE
         $('.btn-invite-candidate').on('click', async function() {
             const candidateId = $(this).data('candidate-id');
             const candidateName = $(this).data('candidate-name');
@@ -846,19 +1043,9 @@
                 }
             });
 
-            if (message === undefined) return; // Cancelled
+            if (message === undefined) return;
 
-            // Show loading
-            Swal.fire({
-                title: 'Mengirim Undangan...',
-                html: '<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>',
-                showConfirmButton: false,
-                allowOutsideClick: false
-            });
-
-            // Send AJAX request
             try {
-                // ✅ GUNAKAN URL LANGSUNG (lebih aman)
                 const response = await fetch(
                     "{{ route('company.candidates.invite.post', ':id') }}".replace(':id',
                         candidateId), {
@@ -900,23 +1087,13 @@
             }
         });
     });
+
     async function viewCandidateDetail(candidateId) {
-        // Show loading
-        Swal.fire({
-            title: 'Memuat Detail...',
-            html: '<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>',
-            showConfirmButton: false,
-            allowOutsideClick: false
-        });
-
         try {
-            console.log('=== START viewCandidateDetail ===');
-            console.log('Candidate ID:', candidateId);
+            const candidateUrl = `{{ route('company.candidates.match.detail', ':id') }}`.replace(':id',
+                candidateId);
 
-            const url = `{{ url('candidates') }}/${candidateId}/detail`;
-            console.log('Fetching URL:', url);
-
-            const response = await fetch(url, {
+            const candidateResponse = await fetch(candidateUrl, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -924,221 +1101,404 @@
                 }
             });
 
-            console.log('Response status:', response.status);
-
-            const responseText = await response.text();
-            console.log('Response text:', responseText.substring(0, 200) + '...');
-
-            let result;
-            try {
-                result = JSON.parse(responseText);
-            } catch (parseError) {
-                console.error('JSON Parse Error:', parseError);
-                throw new Error('Response bukan JSON valid');
+            if (!candidateResponse.ok) {
+                throw new Error(`HTTP error! status: ${candidateResponse.status}`);
             }
 
-            console.log('Result keys:', Object.keys(result));
+            const candidateResult = await candidateResponse.json();
 
-            if (!response.ok) {
-                throw new Error(result.message || `HTTP error! status: ${response.status}`);
+            if (!candidateResult.success) {
+                throw new Error(candidateResult.message || 'Gagal memuat data kandidat');
             }
 
-            if (!result.success) {
-                throw new Error(result.message || 'Gagal memuat data kandidat');
+            const candidate = candidateResult.candidate;
+
+            const ratingUrl = `{{ route('company.candidates.match.rating-detail', ':id') }}`.replace(':id',
+                candidateId);
+
+            const ratingResponse = await fetch(ratingUrl);
+
+            if (!ratingResponse.ok) {
+                throw new Error('Failed to load rating data');
             }
 
-            // ✅ FIX: Support both 'data' and 'candidate' keys
-            const candidate = result.data || result.candidate;
+            const ratingData = await ratingResponse.json();
 
-            if (!candidate) {
-                console.error('Candidate not found in response!');
-                console.error('Available keys:', Object.keys(result));
-                throw new Error('Data kandidat tidak ditemukan dalam response');
+            if (!ratingData.success) {
+                throw new Error(ratingData.message || 'Failed to load rating data');
             }
 
-            console.log('Candidate loaded:', candidate.name);
+            const rating = ratingData.data;
 
-            // ✅ Build skills HTML
+            let avatarHTML = '';
+            if (candidate.user && candidate.user.photo) {
+                avatarHTML = `
+                <img src="/storage/${candidate.user.photo}"
+                     alt="${candidate.name}"
+                     class="avatar-image-large mx-auto mb-3"
+                     onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="avatar-circle-large mx-auto mb-3" style="display: none;">
+                    ${candidate.name.substring(0, 2).toUpperCase()}
+                </div>
+            `;
+            } else {
+                avatarHTML = `
+                <div class="avatar-circle-large mx-auto mb-3">
+                    ${candidate.name.substring(0, 2).toUpperCase()}
+                </div>
+            `;
+            }
+
+            function generateStars(rating) {
+                let stars = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= rating) {
+                        stars += '<i class="bi bi-star-fill"></i>';
+                    } else if (i - 0.5 <= rating) {
+                        stars += '<i class="bi bi-star-half"></i>';
+                    } else {
+                        stars += '<i class="bi bi-star"></i>';
+                    }
+                }
+                return stars;
+            }
+
+            const ratingTabContent = `
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="rating-summary-card">
+                        <div class="rating-number">${rating.average_rating}</div>
+                        <div class="rating-stars">${generateStars(rating.average_rating)}</div>
+                        <div class="rating-count">Dari ${rating.total_ratings} rating</div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="rating-bar-container">
+                        ${[5, 4, 3, 2, 1].map(star => {
+                            const count = rating.rating_breakdown[star];
+                            const percentage = rating.total_ratings > 0 ? (count / rating.total_ratings * 100) : 0;
+                            return `
+                                <div class="rating-bar-item">
+                                    <div class="rating-bar-label">${star} <i class="bi bi-star-fill" style="color: #fbbf24;"></i></div>
+                                    <div class="rating-bar">
+                                        <div class="rating-bar-fill" style="width: ${percentage}%"></div>
+                                    </div>
+                                    <div class="rating-bar-count">${count}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+
+            ${rating.feedback_counts.length > 0 ? `
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-tags me-2"></i>Feedback dari Perusahaan</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        ${rating.feedback_counts.map(fb => `
+                            <span class="feedback-badge">
+                                <i class="bi bi-check-circle-fill"></i>
+                                ${fb.name} (${fb.count}x)
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <div>
+                <h6 class="fw-bold mb-3"><i class="bi bi-chat-quote me-2"></i>Review dari Perusahaan</h6>
+                <div class="tab-content-rating">
+                    ${rating.reviews.length > 0 ? rating.reviews.map(review => `
+                        <div class="review-card">
+                            <div class="review-header">
+                                <div>
+                                    <div class="review-company">${review.company_name}</div>
+                                    <div class="review-job">${review.job_title}</div>
+                                </div>
+                                <div class="review-rating">
+                                    <span class="stars">${generateStars(review.rating)}</span>
+                                    <strong>${review.rating}.0</strong>
+                                </div>
+                            </div>
+                            ${review.review ? `
+                                <div class="review-text">${review.review}</div>
+                            ` : '<div class="review-text text-muted fst-italic">Tidak ada review tertulis</div>'}
+                            <div class="review-footer">
+                                <div class="review-date">
+                                    <i class="bi bi-calendar me-1"></i>${review.date}
+                                </div>
+                                ${review.feedbacks.length > 0 ? `
+                                    <div class="feedback-tags">
+                                        ${review.feedbacks.map(fb => `
+                                            <span class="feedback-tag">${fb}</span>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('') : `
+                        <div class="no-reviews">
+                            <i class="bi bi-inbox"></i>
+                            <p class="fw-semibold">Belum ada review</p>
+                            <small>Kandidat ini belum menerima review dari perusahaan</small>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
             let skillsHtml = '';
-            if (candidate.skills && Array.isArray(candidate.skills) && candidate.skills.length > 0) {
+            if (candidate.skills && candidate.skills.length > 0) {
                 skillsHtml = candidate.skills.map(skill =>
-                    `<span class="skill-tag">${skill.name || 'N/A'}</span>`
-                ).join('');
+                    `<span class="badge bg-primary">${skill.name}</span>`
+                ).join(' ');
             } else {
                 skillsHtml = '<p class="text-muted mb-0">Tidak ada skills</p>';
             }
 
-            // ✅ Build preferred industries HTML
-            let industriesHtml = '';
-            if (candidate.preffered_industries && Array.isArray(candidate.preffered_industries) && candidate
-                .preffered_industries.length > 0) {
-                // Fetch industry names if needed
-                industriesHtml = '<p class="text-muted mb-0">Data industri tersedia (perlu mapping)</p>';
-            } else {
-                industriesHtml = '<p class="text-muted mb-0">Tidak ada preferensi industri</p>';
-            }
-
-            // ✅ Build preferred cities HTML
             let citiesHtml = '';
-            if (candidate.preffered_cities && Array.isArray(candidate.preffered_cities) && candidate
-                .preffered_cities.length > 0) {
-                citiesHtml = '<p class="text-muted mb-0">Data kota tersedia (perlu mapping)</p>';
+            if (candidate.preferred_cities && candidate.preferred_cities.length > 0) {
+                citiesHtml = candidate.preferred_cities.map(city =>
+                    `<span class="badge bg-success">${city.name}</span>`
+                ).join(' ');
             } else {
                 citiesHtml = '<p class="text-muted mb-0">Tidak ada preferensi kota</p>';
             }
 
-            // ✅ Build preferred type jobs HTML
+            let industriesHtml = '';
+            if (candidate.preferred_industries && candidate.preferred_industries.length > 0) {
+                industriesHtml = candidate.preferred_industries.map(ind =>
+                    `<span class="badge bg-warning text-dark">${ind.name}</span>`
+                ).join(' ');
+            } else {
+                industriesHtml = '<p class="text-muted mb-0">Tidak ada preferensi industri</p>';
+            }
+
             let typeJobsHtml = '';
-            if (candidate.preferred_type_jobs && Array.isArray(candidate.preferred_type_jobs) && candidate
-                .preferred_type_jobs.length > 0) {
+            if (candidate.preferred_type_jobs && candidate.preferred_type_jobs.length > 0) {
                 typeJobsHtml = candidate.preferred_type_jobs.map(type =>
-                    `<span class="skill-tag">${type.name || 'N/A'}</span>`
-                ).join('');
+                    `<span class="badge bg-info text-dark">${type.name}</span>`
+                ).join(' ');
             } else {
                 typeJobsHtml = '<p class="text-muted mb-0">Tidak ada preferensi tipe pekerjaan</p>';
             }
 
-            // ✅ Build portfolio HTML
-            let portfolioHtml = '';
-            if (candidate.portofolios && Array.isArray(candidate.portofolios) && candidate.portofolios.length > 0) {
-                portfolioHtml = candidate.portofolios.map(portfolio => {
-                    // ✅ Build URL dengan JavaScript
-                    const fileUrl = portfolio.file ? `/storage/${portfolio.file}` : null;
-
-                    return `
-            <div class="portfolio-item">
-                <div class="portfolio-title">${portfolio.caption || 'Portfolio'}</div>
-                ${portfolio.caption ? `<div class="portfolio-desc">${portfolio.caption}</div>` : ''}
-                ${fileUrl ? `
-                    <a href="${fileUrl}" target="_blank" class="portfolio-link">
-                        <i class="bi bi-link-45deg"></i> Lihat Portfolio
-                    </a>
-                ` : '<p class="text-muted mb-0 mt-2">File tidak tersedia</p>'}
-            </div>
-        `;
-                }).join('');
+            let daysHtml = '';
+            if (candidate.days && candidate.days.length > 0) {
+                daysHtml = candidate.days.map(day =>
+                    `<span class="badge bg-secondary">${day.name}</span>`
+                ).join(' ');
             } else {
-                portfolioHtml = '<p class="text-muted mb-0">Belum ada portfolio</p>';
+                daysHtml = '<p class="text-muted mb-0">Tidak ada preferensi hari kerja</p>';
             }
 
-
-            console.log('=== END viewCandidateDetail (Success) ===');
-
-            // Show detail modal
-            Swal.fire({
-                title: `<div class="modal-header-custom p-3">
-                        <h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>${candidate.name || 'Kandidat'}</h4>
-                    </div>`,
-                html: `
-                <div class="text-start" style="max-height: 70vh; overflow-y: auto;">
-                    <!-- Personal Info -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-person-badge"></i>
-                            Informasi Pribadi
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Email:</span>
-                            <span class="detail-value">${candidate.user?.email || '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Gender:</span>
-                            <span class="detail-value">${candidate.gender || '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Tanggal Lahir:</span>
-                            <span class="detail-value">${candidate.birth_date || '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">No. Telepon:</span>
-                            <span class="detail-value">${candidate.phone_number || '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Tinggi Badan:</span>
-                            <span class="detail-value">${candidate.min_height ? candidate.min_height + ' cm' : '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Berat Badan:</span>
-                            <span class="detail-value">${candidate.min_weight ? candidate.min_weight + ' kg' : '-'}</span>
+            let portfolioHtml = '';
+            if (candidate.portofolios && candidate.portofolios.length > 0) {
+                portfolioHtml = candidate.portofolios.map(portfolio => {
+                    const fileUrl = portfolio.file ? `/storage/${portfolio.file}` : null;
+                    return `
+                    <div class="col-md-4 mb-3">
+                        <div class="portfolio-card text-center p-3 border rounded">
+                            <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 3rem;"></i>
+                            <p class="small mt-2 mb-2">${portfolio.title || 'Portfolio'}</p>
+                            ${fileUrl ? `
+                                <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download me-1"></i>Download
+                                </a>
+                            ` : '<p class="text-muted mb-0">File tidak tersedia</p>'}
                         </div>
                     </div>
+                `;
+                }).join('');
+            } else {
+                portfolioHtml =
+                    '<div class="col-12"><p class="text-muted text-center"><i class="bi bi-inbox"></i> Tidak ada portfolio</p></div>';
+            }
 
-                    <!-- Language Skills -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-translate"></i>
-                            Kemampuan Bahasa
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">English:</span>
-                            <span class="detail-value">${candidate.level_english || '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Mandarin:</span>
-                            <span class="detail-value">${candidate.level_mandarin || '-'}</span>
-                        </div>
-                    </div>
-
-                    <!-- Salary & Rating -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-cash-stack"></i>
-                            Gaji & Rating
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Gaji Minimum:</span>
-                            <span class="detail-value">${candidate.min_salary ? 'Rp ' + new Intl.NumberFormat('id-ID').format(candidate.min_salary) : '-'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Rating:</span>
-                            <span class="detail-value">${candidate.avg_rating ? candidate.avg_rating + '/5 ⭐' : 'Belum ada rating'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Point:</span>
-                            <span class="detail-value">${candidate.point || 0}</span>
-                        </div>
-                    </div>
-
-                    <!-- Skills -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-tools"></i>
-                            Skills
-                        </div>
-                        ${skillsHtml}
-                    </div>
-
-                    <!-- Preferred Type Jobs -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-briefcase"></i>
-                            Tipe Pekerjaan yang Diminati
-                        </div>
-                        ${typeJobsHtml}
-                    </div>
-
-                    <!-- Description -->
-                    ${candidate.description ? `
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-card-text"></i>
-                            Deskripsi
-                        </div>
-                        <p class="mb-0">${candidate.description}</p>
-                    </div>
-                    ` : ''}
-
-                    <!-- Portfolio -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="bi bi-folder"></i>
-                            Portfolio
-                        </div>
-                        ${portfolioHtml}
+            const modalContent = `
+            <div class="row">
+                <div class="col-12">
+                    <div class="modal-profile-header">
+                        ${avatarHTML}
+                        <h4 class="modal-name">${candidate.name}</h4>
+                        <p class="modal-email">
+                            <i class="bi bi-envelope me-2"></i>${candidate.user?.email || '-'}
+                        </p>
                     </div>
                 </div>
-            `,
-                width: '800px',
+                
+                <div class="col-12">
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profileTab" type="button">
+                                <i class="bi bi-person me-2"></i>Profil
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ratingTab" type="button">
+                                <i class="bi bi-star me-2"></i>Rating & Review
+                                <span class="badge bg-primary ms-1">${rating.total_ratings}</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="profileTab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-info-circle"></i>Informasi Pribadi
+                                        </h5>
+                                        <table class="detail-table">
+                                            <tr>
+                                                <td><i class="bi bi-telephone me-2"></i>Telepon</td>
+                                                <td>${candidate.phone_number || '-'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="bi bi-gender-ambiguous me-2"></i>Jenis Kelamin</td>
+                                                <td>${candidate.gender || '-'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="bi bi-calendar me-2"></i>Tanggal Lahir</td>
+                                                <td>${candidate.birth_date ? new Date(candidate.birth_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : '-'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="bi bi-rulers me-2"></i>Tinggi/Berat</td>
+                                                <td>${candidate.min_height || '-'} cm / ${candidate.min_weight || '-'} kg</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="bi bi-cash me-2"></i>Ekspektasi Gaji</td>
+                                                <td>Rp ${candidate.min_salary ? parseInt(candidate.min_salary).toLocaleString('id-ID') : '-'}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-translate"></i>Kemampuan Bahasa
+                                        </h5>
+                                        <table class="detail-table">
+                                            <tr>
+                                                <td><i class="bi bi-flag me-2"></i>English</td>
+                                                <td><span class="badge-custom badge-info">${candidate.level_english || '-'}</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="bi bi-flag me-2"></i>Mandarin</td>
+                                                <td><span class="badge-custom badge-info">${candidate.level_mandarin || '-'}</span></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-star"></i>Rating
+                                        </h5>
+                                        <table class="detail-table">
+                                            <tr>
+                                                <td><i class="bi bi-star-fill me-2"></i>Rating</td>
+                                                <td>
+                                                    <strong style="font-size: 1.25rem; color: var(--primary-blue);">${rating.average_rating}</strong>
+                                                    <span style="color: #6b7280;"> / 5.0</span>
+                                                    <div style="color: #fbbf24; font-size: 0.9rem;">${generateStars(rating.average_rating)}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                ${skillsHtml !== '<p class="text-muted mb-0">Tidak ada skills</p>' ? `
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-tools"></i>Keterampilan
+                                        </h5>
+                                        <div class="badge-group">${skillsHtml.replace(/badge bg-primary/g, 'badge-custom badge-primary')}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                ${citiesHtml !== '<p class="text-muted mb-0">Tidak ada preferensi kota</p>' ? `
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-geo-alt"></i>Preferensi Lokasi
+                                        </h5>
+                                        <div class="badge-group">${citiesHtml.replace(/badge bg-success/g, 'badge-custom badge-success')}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                ${industriesHtml !== '<p class="text-muted mb-0">Tidak ada preferensi industri</p>' ? `
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-briefcase"></i>Industri Diminati
+                                        </h5>
+                                        <div class="badge-group">${industriesHtml.replace(/badge bg-warning text-dark/g, 'badge-custom badge-warning')}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                ${typeJobsHtml !== '<p class="text-muted mb-0">Tidak ada preferensi tipe pekerjaan</p>' ? `
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-briefcase-fill"></i>Tipe Pekerjaan
+                                        </h5>
+                                        <div class="badge-group">${typeJobsHtml.replace(/badge bg-info text-dark/g, 'badge-custom badge-info')}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                ${daysHtml !== '<p class="text-muted mb-0">Tidak ada preferensi hari kerja</p>' ? `
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-calendar-week"></i>Hari Kerja Preferensi
+                                        </h5>
+                                        <div class="badge-group">${daysHtml.replace(/badge bg-secondary/g, 'badge-custom badge-secondary')}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                ${candidate.description ? `
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-file-text"></i>Deskripsi
+                                        </h5>
+                                        <p style="color: #4b5563; line-height: 1.7; margin: 0;">${candidate.description}</p>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                <div class="col-12">
+                                    <div class="detail-section">
+                                        <h5 class="detail-section-title">
+                                            <i class="bi bi-folder"></i>Portfolio
+                                        </h5>
+                                        <div class="row g-3">${portfolioHtml}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="ratingTab">
+                            ${ratingTabContent}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+            Swal.close();
+
+            Swal.fire({
+                html: modalContent,
+                width: '1200px',
                 showCloseButton: true,
                 showConfirmButton: false,
                 customClass: {
@@ -1147,9 +1507,6 @@
             });
 
         } catch (error) {
-            console.error('=== ERROR in viewCandidateDetail ===');
-            console.error('Error:', error);
-
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal!',

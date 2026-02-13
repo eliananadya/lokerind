@@ -162,7 +162,14 @@
                         @endforeach
                     </select>
                 </div>
-
+                <div class="col-lg-2 col-md-6">
+                    <select class="form-select select2-dropdown" name="days[]" id="days" multiple
+                        data-placeholder="Pilih Hari">
+                        @foreach ($days as $day)
+                            <option value="{{ $day->id }}">{{ $day->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-lg-3 col-md-12">
                     <div class="d-flex gap-2">
                         <button class="btn btn-primary-custom flex-grow-1 text-white" id="filterBtn">
@@ -745,7 +752,7 @@
                                 <div class="card shadow-sm mt-2">
                                     <div class="card-body">
                                         <h6 class="fw-bold">${b.benefit?.name || 'Benefit'}</h6>
-                                        <p class="mb-0">Jumlah: ${b.amount || 'N/A'}</p>
+                                        <p class="mb-0">Jumlah: ${b.amount || 'In Kind'}</p>
                                     </div>
                                 </div>
                             `).join('') :
@@ -853,6 +860,7 @@
                 city: $('#city').val(),
                 type_job: $('#type_job').val(),
                 industry: $('#industry').val(),
+                days: $('#days').val(),
                 sort_by: $('#sortBy').val(),
                 page: currentPage
             };
@@ -883,9 +891,10 @@
                     } else {
                         $listings.html(`
                                 <div class="col-12 text-center py-5">
-                                    <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
-                                    <h5 class="text-muted mt-3">Tidak Ada Hasil</h5>
-                                </div>
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                        <h5 class="text-muted mt-3">Tidak Ada Hasil</h5>
+                        <p class="text-muted">Coba ubah filter pencarian Anda</p>
+                    </div>
                             `);
                     }
                 },

@@ -1,344 +1,241 @@
 @extends('layouts.main')
 
-@section('title', 'Buat Lowongan Baru')
+@section('content')
 
-<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
-<style>
-    :root {
-        --primary-blue: #14489b;
-        --secondary-blue: #244770;
-        --dark-blue: #1e3992;
-        --light-blue: #dbeafe;
-        --bg-blue: #eff6ff;
-    }
+    <style>
+        /* ✅ DISABLED INPUT STYLING */
+        input[name*="[amount]"]:disabled {
+            background-color: #e9ecef !important;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
 
-    /* ✅ DISABLED INPUT STYLING */
-    input[name*="[amount]"]:disabled {
-        background-color: #e9ecef !important;
-        cursor: not-allowed;
-        opacity: 0.7;
-    }
+        input[name*="[amount]"]:disabled::placeholder {
+            color: #6c757d;
+            font-style: italic;
+        }
 
-    input[name*="[amount]"]:disabled::placeholder {
-        color: #6c757d;
-        font-style: italic;
-    }
+        .job-date-item {
+            background: #f8f9fa;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
 
-    body {
-        background-color: #f8f9fa;
-    }
+        .remove-date-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-    .job-date-item {
-        background: #f8f9fa;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        position: relative;
-    }
+        .benefit-item {
+            background: #f8f9fa;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
 
-    .job-date-item:hover {
-        border-color: var(--primary-blue);
-        box-shadow: 0 2px 8px rgba(20, 72, 155, 0.1);
-    }
+        .remove-benefit-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-    .remove-date-btn {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        background: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
+        .remove-benefit-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
 
-    .remove-date-btn:hover {
-        background: #c82333;
-        transform: scale(1.1);
-    }
+        /* Header Styles */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(20, 72, 155, 0.3);
+        }
 
-    .benefit-item {
-        background: #f8f9fa;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        position: relative;
-    }
+        .page-header h3 {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
 
-    .benefit-item:hover {
-        border-color: var(--primary-blue);
-        box-shadow: 0 2px 8px rgba(20, 72, 155, 0.1);
-    }
+        /* Form Section Styles */
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s;
+        }
 
-    .remove-benefit-btn {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        background: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
+        .form-section h5 {
+            color: var(--primary-blue);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 3px solid var(--light-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+        }
 
-    .remove-benefit-btn:hover {
-        background: #c82333;
-        transform: scale(1.1);
-    }
+        .form-section h5 i {
+            font-size: 1.5rem;
+        }
 
-    /* Header Styles */
-    .page-header {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        color: white;
-        padding: 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 12px rgba(20, 72, 155, 0.3);
-    }
+        /* Form Labels */
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-    .page-header h3 {
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
+        .form-label .text-danger {
+            font-size: 1.2rem;
+        }
 
-    /* Form Section Styles */
-    .form-section {
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e5e7eb;
-        transition: all 0.3s;
-    }
+        /* Form Controls */
+        .form-control,
+        .form-select {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.75rem;
+            transition: all 0.3s;
+        }
 
-    .form-section:hover {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-        transform: translateY(-2px);
-    }
+        /* Select2 Customization */
+        .select2-container--default .select2-selection--single,
+        .select2-container--default .select2-selection--multiple {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            min-height: 48px;
+            padding: 0.25rem;
+        }
 
-    .form-section h5 {
-        color: var(--primary-blue);
-        font-weight: 700;
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 3px solid var(--light-blue);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 1.25rem;
-    }
+        .select2-container--default.select2-container--focus .select2-selection--single,
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 0.2rem rgba(20, 72, 155, 0.15);
+        }
 
-    .form-section h5 i {
-        font-size: 1.5rem;
-    }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
 
-    /* Form Labels */
-    .form-label {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+            color: white;
+            margin-right: 0.5rem;
+        }
 
-    .form-label .text-danger {
-        font-size: 1.2rem;
-    }
+        /* Button Styles */
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(20, 72, 155, 0.2);
+        }
 
-    /* Form Controls */
-    .form-control,
-    .form-select {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 0.75rem;
-        transition: all 0.3s;
-    }
+        .btn-outline-primary {
+            border: 2px solid var(--primary-blue);
+            color: var(--primary-blue);
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
 
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--primary-blue);
-        box-shadow: 0 0 0 0.2rem rgba(20, 72, 155, 0.15);
-    }
+        .btn-secondary {
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
 
-    /* Select2 Customization */
-    .select2-container--default .select2-selection--single,
-    .select2-container--default .select2-selection--multiple {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        min-height: 48px;
-        padding: 0.25rem;
-    }
+        /* Input Group Icons */
+        .input-with-icon {
+            position: relative;
+        }
 
-    .select2-container--default.select2-container--focus .select2-selection--single,
-    .select2-container--default.select2-container--focus .select2-selection--multiple {
-        border-color: var(--primary-blue);
-        box-shadow: 0 0 0 0.2rem rgba(20, 72, 155, 0.15);
-    }
+        .input-with-icon i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-blue);
+            font-size: 1.2rem;
+        }
 
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        border: none;
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-    }
+        .input-with-icon input {
+            padding-left: 3rem;
+        }
 
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-        color: white;
-        margin-right: 0.5rem;
-    }
+        /* Helper Text */
+        .helper-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
 
-    /* Button Styles */
-    .btn-primary-custom {
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        border: none;
-        color: white;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s;
-        box-shadow: 0 4px 8px rgba(20, 72, 155, 0.2);
-    }
+        .helper-text i {
+            font-size: 1rem;
+        }
 
-    .btn-primary-custom:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(20, 72, 155, 0.3);
-    }
+        /* Required Field Indicator */
+        .required-fields-note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
 
-    .btn-outline-primary {
-        border: 2px solid var(--primary-blue);
-        color: var(--primary-blue);
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s;
-    }
-
-    .btn-outline-primary:hover {
-        background: var(--primary-blue);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(20, 72, 155, 0.2);
-    }
-
-    .btn-secondary {
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-    }
-
-    /* Input Group Icons */
-    .input-with-icon {
-        position: relative;
-    }
-
-    .input-with-icon i {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--primary-blue);
-        font-size: 1.2rem;
-    }
-
-    .input-with-icon input {
-        padding-left: 3rem;
-    }
-
-    /* Progress Steps */
-    .progress-steps {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 2rem;
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    }
-
-    .progress-step {
-        flex: 1;
-        text-align: center;
-        position: relative;
-    }
-
-    .progress-step:not(:last-child)::after {
-        content: '';
-        position: absolute;
-        top: 20px;
-        right: -50%;
-        width: 100%;
-        height: 2px;
-        background: #e5e7eb;
-    }
-
-    .progress-step.active .step-number {
-        background: var(--primary-blue);
-        color: white;
-    }
-
-    .step-number {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #e5e7eb;
-        color: #6b7280;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        position: relative;
-        z-index: 1;
-    }
-
-    .step-label {
-        font-size: 0.875rem;
-        color: #6b7280;
-        font-weight: 600;
-    }
-
-    /* Helper Text */
-    .helper-text {
-        font-size: 0.875rem;
-        color: #6b7280;
-        margin-top: 0.25rem;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .helper-text i {
-        font-size: 1rem;
-    }
-
-    /* Required Field Indicator */
-    .required-fields-note {
-        background: #fef3c7;
-        border-left: 4px solid #f59e0b;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-    }
-
-    .required-fields-note i {
-        color: #f59e0b;
-        font-size: 1.2rem;
-    }
-</style>
+        .required-fields-note i {
+            color: #f59e0b;
+            font-size: 1.2rem;
+        }
+    </style>
 @section('content')
     <div class="container py-4">
         <!-- Header -->
@@ -351,26 +248,6 @@
                 <a href="{{ route('company.dashboard') }}" class="btn btn-light">
                     <i class="bi bi-arrow-left me-2"></i>Kembali
                 </a>
-            </div>
-        </div>
-
-        <!-- Progress Steps -->
-        <div class="progress-steps">
-            <div class="progress-step active">
-                <div class="step-number">1</div>
-                <div class="step-label">Informasi Dasar</div>
-            </div>
-            <div class="progress-step">
-                <div class="step-number">2</div>
-                <div class="step-label">Persyaratan</div>
-            </div>
-            <div class="progress-step">
-                <div class="step-number">3</div>
-                <div class="step-label">Detail</div>
-            </div>
-            <div class="progress-step">
-                <div class="step-number">4</div>
-                <div class="step-label">Publikasi</div>
             </div>
         </div>
 
@@ -735,12 +612,9 @@
 
             <!-- Action Buttons -->
             <div class="d-flex justify-content-end mb-4 gap-3">
-                <a href="{{ route('company.jobs.index') }}" class="btn btn-secondary">
+                <a href="{{ route('company.dashboard') }}" class="btn btn-secondary">
                     <i class="bi bi-x-lg me-2"></i>Batal
                 </a>
-                <button type="submit" name="action" value="draft" class="btn btn-outline-primary" id="saveDraftBtn">
-                    <i class="bi bi-save me-2"></i>Simpan sebagai Draft
-                </button>
                 <button type="submit" name="action" value="publish" class="btn btn-primary-custom text-white"
                     id="publishBtn">
                     <i class="bi bi-check-lg me-2 text-white"></i>Publikasikan Lowongan
@@ -870,10 +744,83 @@
                 $amountInput.css('background-color', '#e9ecef');
             }
         });
+
+        setTimeout(function() {
+            validateRecruitmentDates();
+        }, 500);
     });
 
     // --------- SUBMIT ---------
     function submitForm(status) {
+        // ✅ VALIDASI: Cek apakah tanggal buka valid
+        const openDate = new Date($('#open_recruitment').val() + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Ambil tanggal jadwal kerja paling awal
+        const workDates = [];
+        $('.date-input').each(function() {
+            const dateValue = $(this).val();
+            if (dateValue) {
+                workDates.push(new Date(dateValue + 'T00:00:00'));
+            }
+        });
+
+        if (workDates.length > 0) {
+            const earliestWorkDate = new Date(Math.min(...workDates));
+            earliestWorkDate.setHours(0, 0, 0, 0);
+
+            // ✅ LOGIC: Jika tanggal buka < jadwal kerja pertama, otomatis Draft
+            if (openDate < earliestWorkDate) {
+                status = 'Draft';
+
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Status Diubah Menjadi Draft',
+                    html: `
+                    <p>Karena tanggal pembukaan rekrutmen <strong>sebelum</strong> jadwal kerja pertama, lowongan akan disimpan sebagai <strong>Draft</strong>.</p>
+                    <div class="alert alert-info mt-3">
+                        <strong>Tanggal Buka:</strong> ${formatDateIndo(openDate)}<br>
+                        <strong>Jadwal Kerja Pertama:</strong> ${formatDateIndo(earliestWorkDate)}
+                    </div>
+                    <p class="mt-2 text-muted small">Anda dapat mengubah status menjadi "Open" setelah tanggal buka melewati jadwal kerja pertama.</p>
+                `,
+                    confirmButtonText: 'Lanjutkan Simpan sebagai Draft',
+                    confirmButtonColor: '#0d6efd'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        proceedSubmit(status);
+                    }
+                });
+
+                return;
+            }
+
+            // ✅ VALIDASI: Jika tanggal buka > jadwal kerja pertama, TOLAK
+            if (openDate > earliestWorkDate) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Tanggal Tidak Valid',
+                    html: `
+                    <p>Tanggal pembukaan rekrutmen tidak boleh <strong>setelah</strong> jadwal kerja pertama.</p>
+                    <div class="alert alert-danger mt-3">
+                        <strong>Jadwal Kerja Pertama:</strong> ${formatDateIndo(earliestWorkDate)}<br>
+                        <strong>Tanggal Buka Anda:</strong> ${formatDateIndo(openDate)}
+                    </div>
+                `,
+                    confirmButtonColor: '#dc3545'
+                });
+
+                return;
+            }
+        }
+
+        // ✅ Jika valid, lanjutkan submit
+        proceedSubmit(status);
+    }
+
+    // ✅ HELPER FUNCTION: Proses submit actual
+    function proceedSubmit(status) {
         const formData = new FormData($('#jobPostingForm')[0]);
         formData.append('status', status);
 
@@ -885,10 +832,12 @@
             contentType: false,
             success: function(response) {
                 if (response.success) {
+                    const statusText = status === 'Open' ? 'dipublikasikan' : 'disimpan sebagai draft';
+
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil!',
-                        html: `<p>${response.message}</p>`,
+                        html: `<p>Lowongan berhasil ${statusText}!</p>`,
                         timer: 2000,
                         timerProgressBar: true,
                         showConfirmButton: false
@@ -997,53 +946,53 @@
         const today = new Date().toISOString().split('T')[0];
         const container = $('#jobDatesContainer');
         const newJobDate = `
-            <div class="job-date-item" data-index="${jobDateIndex}">
-                <button type="button" class="remove-date-btn" onclick="removeJobDate(${jobDateIndex})">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+        <div class="job-date-item" data-index="${jobDateIndex}">
+            <button type="button" class="remove-date-btn" onclick="removeJobDate(${jobDateIndex})">
+                <i class="bi bi-x-lg"></i>
+            </button>
 
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">
-                            <i class="bi bi-calendar-day text-primary"></i>
-                            Hari <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control day-display"
-                               name="job_dates[${jobDateIndex}][day_display]"
-                               readonly
-                               placeholder="Pilih tanggal dulu"
-                               style="background-color: #e9ecef; cursor: not-allowed;">
-                        <input type="hidden" name="job_dates[${jobDateIndex}][day_id]" class="day-id-input">
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">
-                            <i class="bi bi-calendar-event text-primary"></i>
-                            Tanggal <span class="text-danger">*</span>
-                        </label>
-                        <input type="date" class="form-control date-input"
-                               name="job_dates[${jobDateIndex}][date]"
-                               min="${today}"
-                               required>
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">
-                            <i class="bi bi-clock text-primary"></i>
-                            Jam Mulai <span class="text-danger">*</span>
-                        </label>
-                        <input type="time" class="form-control" name="job_dates[${jobDateIndex}][start_time]" required>
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">
-                            <i class="bi bi-clock-fill text-primary"></i>
-                            Jam Selesai <span class="text-danger">*</span>
-                        </label>
-                        <input type="time" class="form-control" name="job_dates[${jobDateIndex}][end_time]" required>
-                    </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">
+                        <i class="bi bi-calendar-day text-primary"></i>
+                        Hari <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" class="form-control day-display"
+                           name="job_dates[${jobDateIndex}][day_display]"
+                           readonly
+                           placeholder="Pilih tanggal dulu"
+                           style="background-color: #e9ecef; cursor: not-allowed;">
+                    <input type="hidden" name="job_dates[${jobDateIndex}][day_id]" class="day-id-input">
                 </div>
-            </div>`;
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">
+                        <i class="bi bi-calendar-event text-primary"></i>
+                        Tanggal <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" class="form-control date-input"
+                           name="job_dates[${jobDateIndex}][date]"
+                           min="${today}"
+                           required>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">
+                        <i class="bi bi-clock text-primary"></i>
+                        Jam Mulai <span class="text-danger">*</span>
+                    </label>
+                    <input type="time" class="form-control" name="job_dates[${jobDateIndex}][start_time]" required>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">
+                        <i class="bi bi-clock-fill text-primary"></i>
+                        Jam Selesai <span class="text-danger">*</span>
+                    </label>
+                    <input type="time" class="form-control" name="job_dates[${jobDateIndex}][end_time]" required>
+                </div>
+            </div>
+        </div>`;
 
         container.append(newJobDate);
 
@@ -1051,14 +1000,23 @@
             $('.job-date-item .remove-date-btn').show();
         }
 
+        // ✅ TAMBAHKAN: Update validasi setelah menambah jadwal
+        setTimeout(function() {
+            validateRecruitmentDates();
+        }, 100);
+
         jobDateIndex++;
     }
 
     function removeJobDate(index) {
         $(`.job-date-item[data-index="${index}"]`).remove();
+
         if ($('.job-date-item').length === 1) {
             $('.job-date-item .remove-date-btn').hide();
         }
+        setTimeout(function() {
+            validateRecruitmentDates();
+        }, 100);
     }
 
     // --------- BENEFIT TYPE CHANGE: toggle amount input ---------
@@ -1080,5 +1038,115 @@
             $amountInput.attr('placeholder', 'Contoh: 500000 atau 1 unit');
             $amountInput.css('background-color', '#ffffff');
         }
+    });
+    // ✅ VALIDASI TANGGAL REKRUTMEN BERDASARKAN JADWAL KERJA
+    function validateRecruitmentDates() {
+        const $openRecruitment = $('#open_recruitment');
+        const $closeRecruitment = $('#close_recruitment');
+
+        // Ambil semua tanggal dari jadwal kerja
+        const workDates = [];
+        $('.date-input').each(function() {
+            const dateValue = $(this).val();
+            if (dateValue) {
+                workDates.push(new Date(dateValue + 'T00:00:00'));
+            }
+        });
+
+        if (workDates.length === 0) {
+            // Jika belum ada jadwal kerja, set min ke hari ini
+            const today = new Date().toISOString().split('T')[0];
+            $openRecruitment.attr('min', today);
+            $closeRecruitment.attr('min', '');
+            return;
+        }
+
+        // Cari tanggal jadwal kerja paling awal
+        const earliestWorkDate = new Date(Math.min(...workDates));
+
+        // Tanggal buka maksimal = earliestWorkDate
+        const maxOpenDate = earliestWorkDate.toISOString().split('T')[0];
+
+        // Set min untuk tanggal buka = hari ini
+        const today = new Date().toISOString().split('T')[0];
+        $openRecruitment.attr('min', today);
+        $openRecruitment.attr('max', maxOpenDate);
+
+        // Update helper text
+        const $helperOpen = $openRecruitment.next('.helper-text');
+        if ($helperOpen.length === 0) {
+            $openRecruitment.after(`
+            <div class="helper-text text-warning mt-1">
+                <i class="bi bi-exclamation-triangle"></i>
+                Tanggal buka maksimal: ${formatDateIndo(earliestWorkDate)}
+            </div>
+        `);
+        } else {
+            $helperOpen.html(`
+            <i class="bi bi-exclamation-triangle"></i>
+            Tanggal buka maksimal: ${formatDateIndo(earliestWorkDate)}
+        `);
+        }
+    }
+
+    // ✅ FORMAT TANGGAL KE INDONESIA
+    function formatDateIndo(date) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+        const d = new Date(date);
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    // ✅ DELEGATED EVENT: Update validasi saat tanggal jadwal kerja berubah
+    $(document).on('change', '.date-input', function() {
+        // ... kode existing untuk update day ...
+
+        // ✅ TAMBAHKAN: Update validasi tanggal rekrutmen
+        validateRecruitmentDates();
+    });
+
+    // ✅ EVENT: Validasi saat tanggal buka diubah
+    $('#open_recruitment').on('change', function() {
+        const openDate = new Date($(this).val() + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Ambil tanggal jadwal kerja paling awal
+        const workDates = [];
+        $('.date-input').each(function() {
+            const dateValue = $(this).val();
+            if (dateValue) {
+                workDates.push(new Date(dateValue + 'T00:00:00'));
+            }
+        });
+
+        if (workDates.length === 0) return;
+
+        const earliestWorkDate = new Date(Math.min(...workDates));
+        earliestWorkDate.setHours(0, 0, 0, 0);
+
+        // ✅ VALIDASI: Tanggal buka tidak boleh SETELAH jadwal kerja paling awal
+        if (openDate > earliestWorkDate) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tanggal Tidak Valid',
+                html: `
+                <p>Tanggal pembukaan rekrutmen tidak boleh <strong>setelah</strong> jadwal kerja pertama.</p>
+                <div class="alert alert-warning mt-3">
+                    <strong>Jadwal Kerja Pertama:</strong> ${formatDateIndo(earliestWorkDate)}<br>
+                    <strong>Tanggal Buka Maksimal:</strong> ${formatDateIndo(earliestWorkDate)}
+                </div>
+            `,
+                confirmButtonColor: '#f59e0b'
+            });
+
+            $(this).val('');
+            $('#close_recruitment').val('');
+            return;
+        }
+
+        // ✅ UPDATE: Set min untuk close_recruitment
+        const nextDay = new Date(openDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        $('#close_recruitment').attr('min', nextDay.toISOString().split('T')[0]);
     });
 </script>

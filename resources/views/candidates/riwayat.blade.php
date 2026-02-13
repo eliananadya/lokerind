@@ -150,7 +150,7 @@
                                                     <div class="ms-3">
                                                         @php
                                                             $statusColors = [
-                                                                'invited' => 'warning',
+                                                                'Invited' => 'warning',
                                                                 'Applied' => 'secondary',
                                                                 'Reviewed' => 'info',
                                                                 'Interview' => 'warning',
@@ -165,30 +165,18 @@
                                                         </span>
                                                     </div>
                                                 </div>
-
-                                                @if ($application->status === 'invited' && $application->invited_by_company)
-                                                    <div class="alert alert-warning mb-3">
-                                                        <i class="bi bi-envelope-heart me-1"></i>
-                                                        <strong>Undangan dari Perusahaan!</strong>
-                                                        <p class="mb-0 mt-1 small">
-                                                            Anda diundang untuk melamar posisi ini.
-                                                            Terima undangan untuk mendapat +15 poin!
-                                                        </p>
-                                                    </div>
-                                                @endif
-
                                                 <div class="border-top pt-3">
                                                     <div class="row g-2">
                                                         <div class="col-6">
                                                             <small class="text-muted d-block">
-                                                                @if ($application->status === 'invited')
+                                                                @if ($application->status === 'Invited')
                                                                     Diundang Pada
                                                                 @else
                                                                     Tanggal Melamar
                                                                 @endif
                                                             </small>
                                                             <small class="fw-bold">
-                                                                @if ($application->status === 'invited' && $application->invited_at)
+                                                                @if ($application->status === 'Invited' && $application->invited_at)
                                                                     {{ $application->invited_at->format('d M Y') }}
                                                                 @else
                                                                     {{ $application->applied_at ? \Carbon\Carbon::parse($application->applied_at)->format('d M Y') : '-' }}
@@ -201,7 +189,74 @@
                                                                 class="fw-bold">{{ $application->updated_at->format('d M Y') }}</small>
                                                         </div>
                                                     </div>
+                                                    @if ($application->message && trim($application->message) !== '')
+                                                        @php
+                                                            $messageStyle = match ($application->status) {
+                                                                'Accepted' => [
+                                                                    'bg' =>
+                                                                        'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);',
+                                                                    'border' => 'border-left-color: #10b981;',
+                                                                    'color' => 'color: #065f46;',
+                                                                    'icon' => 'bi-check-circle-fill',
+                                                                    'iconColor' => 'color: #10b981;',
+                                                                ],
+                                                                'Rejected' => [
+                                                                    'bg' =>
+                                                                        'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);',
+                                                                    'border' => 'border-left-color: #ef4444;',
+                                                                    'color' => 'color: #991b1b;',
+                                                                    'icon' => 'bi-x-circle-fill',
+                                                                    'iconColor' => 'color: #ef4444;',
+                                                                ],
+                                                                'Selection' => [
+                                                                    'bg' =>
+                                                                        'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);',
+                                                                    'border' => 'border-left-color: #f59e0b;',
+                                                                    'color' => 'color: #92400e;',
+                                                                    'icon' => 'bi-star-fill',
+                                                                    'iconColor' => 'color: #f59e0b;',
+                                                                ],
+                                                                'Interview' => [
+                                                                    'bg' =>
+                                                                        'background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);',
+                                                                    'border' => 'border-left-color: #3b82f6;',
+                                                                    'color' => 'color: #1e40af;',
+                                                                    'icon' => 'bi-calendar-check-fill',
+                                                                    'iconColor' => 'color: #3b82f6;',
+                                                                ],
+                                                                'Finished' => [
+                                                                    'bg' =>
+                                                                        'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);',
+                                                                    'border' => 'border-left-color: #6366f1;',
+                                                                    'color' => 'color: #3730a3;',
+                                                                    'icon' => 'bi-flag-fill',
+                                                                    'iconColor' => 'color: #6366f1;',
+                                                                ],
+                                                                default => [
+                                                                    'bg' =>
+                                                                        'background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);',
+                                                                    'border' => 'border-left-color: #6b7280;',
+                                                                    'color' => 'color: #374151;',
+                                                                    'icon' => 'bi-chat-left-text-fill',
+                                                                    'iconColor' => 'color: #6b7280;',
+                                                                ],
+                                                            };
+                                                        @endphp
 
+                                                        <div class="mt-3 p-3 rounded-3 border-start border-4"
+                                                            style="{{ $messageStyle['bg'] }} {{ $messageStyle['border'] }} box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                                            <h6 class="fw-bold mb-2 d-flex align-items-center gap-2"
+                                                                style="{{ $messageStyle['color'] }} font-size: 0.875rem;">
+                                                                <i class="bi {{ $messageStyle['icon'] }}"
+                                                                    style="{{ $messageStyle['iconColor'] }} font-size: 1rem;"></i>
+                                                                Pesan dari Perusahaan
+                                                            </h6>
+                                                            <p class="mb-0"
+                                                                style="{{ $messageStyle['color'] }} line-height: 1.6; font-size: 0.875rem;">
+                                                                {{ $application->message }}
+                                                            </p>
+                                                        </div>
+                                                    @endif
                                                     <div class="mt-3">
                                                         <!-- VIEW DETAIL BUTTON -->
                                                         <button type="button"
@@ -212,7 +267,7 @@
                                                             Lihat Detail Lamaran
                                                         </button>
 
-                                                        @if (in_array($application->status, ['invited', 'Accepted']) && $application->invited_by_company)
+                                                        @if (in_array($application->status, ['Invited', 'Accepted']) && $application->invited_by_company)
                                                             <button type="button"
                                                                 class="btn btn-success btn-sm w-100 mb-2 accept-invitation-btn"
                                                                 data-application-id="{{ $application->id }}"
@@ -223,7 +278,7 @@
                                                             </button>
                                                         @endif
 
-                                                        @if (in_array($application->status, ['Applied', 'Reviewed', 'invited', 'Accepted', 'Interview', 'Pending']))
+                                                        @if (in_array($application->status, ['Applied', 'Reviewed', 'Selection', 'Accepted', 'Interview', 'Pending']))
                                                             <button type="button"
                                                                 class="btn btn-outline-danger btn-sm w-100 withdraw-btn mb-2"
                                                                 data-application-id="{{ $application->id }}"
@@ -315,7 +370,7 @@
                         </div>
                     @endif
                 </div>
-                <!-- ✅ ADD THIS SECTION - INVITATIONS (Company Invitations) -->
+                {{-- ✅ INVITATIONS SECTION - FIXED --}}
                 <div class="history-section" id="invitations-section" style="display: none;">
                     @if ($invitations->count() > 0)
                         <div class="mb-4">
@@ -326,16 +381,11 @@
                                 @foreach ($invitations as $invitation)
                                     <div class="col-lg-6">
                                         <div
-                                            class="card history-card rounded-3 h-100 border {{ $invitation->status === 'invited' ? 'border-warning border-2' : '' }}">
+                                            class="card history-card rounded-3 h-100 border {{ $invitation->status === 'Invited' ? 'border-2' : '' }}">
                                             <div class="card-body p-4">
                                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                                     <div class="flex-grow-1">
                                                         <div class="d-flex align-items-center mb-2">
-                                                            @if ($invitation->status === 'invited')
-                                                                <span class="badge bg-warning text-dark me-2">
-                                                                    <i class="bi bi-envelope-heart me-1"></i>BARU!
-                                                                </span>
-                                                            @endif
                                                             <h5 class="fw-bold mb-0">
                                                                 {{ $invitation->jobPosting->title ?? 'Job Title' }}
                                                             </h5>
@@ -352,7 +402,8 @@
                                                     <div class="ms-3">
                                                         @php
                                                             $statusColors = [
-                                                                'invited' => 'warning',
+                                                                'Invited' => 'warning',
+                                                                'Selection' => 'info',
                                                                 'Accepted' => 'success',
                                                                 'Rejected' => 'danger',
                                                                 'Interview' => 'info',
@@ -365,17 +416,19 @@
                                                     </div>
                                                 </div>
 
-                                                @if ($invitation->status === 'invited')
-                                                    <div class="alert alert-warning mb-3">
-                                                        <i class="bi bi-envelope-heart me-1"></i>
-                                                        <strong>Anda Diundang!</strong>
-                                                        <p class="mb-0 mt-1 small">
-                                                            Perusahaan tertarik dengan profil Anda.
-                                                            @if ($invitation->jobPosting->has_interview == 1)
-                                                                Jika diterima, Anda akan masuk tahap wawancara.
-                                                            @else
-                                                                Terima undangan untuk langsung diterima!
-                                                            @endif
+                                                {{-- Pesan dari Perusahaan (jika ada) --}}
+                                                @if ($invitation->message && trim($invitation->message) !== '')
+                                                    <div class="mb-3 p-3 rounded-3 border-start border-4 border-primary"
+                                                        style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
+                                                        <h6 class="fw-bold mb-2 d-flex align-items-center gap-2 text-primary"
+                                                            style="font-size: 0.875rem;">
+                                                            <i class="bi bi-chat-left-text-fill"
+                                                                style="font-size: 1rem;"></i>
+                                                            Pesan dari Perusahaan
+                                                        </h6>
+                                                        <p class="mb-0 text-primary"
+                                                            style="line-height: 1.6; font-size: 0.875rem;">
+                                                            {{ $invitation->message }}
                                                         </p>
                                                     </div>
                                                 @endif
@@ -395,6 +448,7 @@
                                                         </div>
                                                     </div>
 
+                                                    {{-- ✅ ACTION BUTTONS - DIPERBAIKI! --}}
                                                     <div class="mt-3">
                                                         <!-- VIEW DETAIL BUTTON -->
                                                         <button type="button"
@@ -405,16 +459,17 @@
                                                             Lihat Detail Lowongan
                                                         </button>
 
-                                                        @if ($invitation->status === 'invited')
-                                                            <div class="row g-2">
+                                                        {{-- ✅ TOMBOL ACCEPT & REJECT - PASTIKAN MUNCUL! --}}
+                                                        @if ($invitation->status === 'Invited')
+                                                            <div class="row g-2 mb-2">
                                                                 <div class="col-6">
                                                                     <button type="button"
-                                                                        class="btn btn-success btn-sm w-100 accept-invitation-action-btn"
+                                                                        class="btn btn-success btn-sm w-100 accept-invitation-btn"
                                                                         data-invitation-id="{{ $invitation->id }}"
                                                                         data-company-name="{{ $invitation->jobPosting->company->name ?? 'Company' }}"
                                                                         data-job-title="{{ $invitation->jobPosting->title ?? 'Job' }}"
-                                                                        data-has-interview="{{ $invitation->jobPosting->has_interview }}">
-                                                                        <i class="bi bi-check-circle me-1"></i>
+                                                                        data-has-interview="{{ $invitation->jobPosting->has_interview ?? 0 }}">
+                                                                        <i class="bi bi-check-circle-fill me-1"></i>
                                                                         Terima
                                                                     </button>
                                                                 </div>
@@ -424,7 +479,7 @@
                                                                         data-invitation-id="{{ $invitation->id }}"
                                                                         data-company-name="{{ $invitation->jobPosting->company->name ?? 'Company' }}"
                                                                         data-job-title="{{ $invitation->jobPosting->title ?? 'Job' }}">
-                                                                        <i class="bi bi-x-circle me-1"></i>
+                                                                        <i class="bi bi-x-circle-fill me-1"></i>
                                                                         Tolak
                                                                     </button>
                                                                 </div>
@@ -432,14 +487,22 @@
                                                         @elseif ($invitation->status === 'Accepted')
                                                             <div class="alert alert-success py-2 mb-0">
                                                                 <i class="bi bi-check-circle-fill me-1"></i>
-                                                                <small>Anda telah menerima undangan ini</small>
+                                                                <small><strong>Selamat!</strong> Anda telah diterima untuk
+                                                                    posisi ini</small>
+                                                            </div>
+                                                        @elseif ($invitation->status === 'Selection')
+                                                            <div class="alert alert-info py-2 mb-0">
+                                                                <i class="bi bi-hourglass-split me-1"></i>
+                                                                <small>Menunggu jadwal seleksi/wawancara dari
+                                                                    perusahaan</small>
                                                             </div>
                                                         @elseif ($invitation->status === 'Rejected')
                                                             <div class="alert alert-danger py-2 mb-0">
                                                                 <i class="bi bi-x-circle-fill me-1"></i>
                                                                 <small>Anda telah menolak undangan ini</small>
                                                                 @if ($invitation->reject_reason)
-                                                                    <p class="mb-0 mt-1 small fst-italic">
+                                                                    <p class="mb-0 mt-2 small fst-italic">
+                                                                        <i class="bi bi-chat-quote me-1"></i>
                                                                         "{{ Str::limit($invitation->reject_reason, 100) }}"
                                                                     </p>
                                                                 @endif
@@ -473,602 +536,548 @@
                     @endif
                 </div>
 
-                {{-- ✅ ADD THIS MODAL - Reject Invitation Modal --}}
-                <div class="modal fade" id="rejectInvitationModal" tabindex="-1"
-                    aria-labelledby="rejectInvitationModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header border-0 bg-danger bg-opacity-10">
-                                <h5 class="modal-title fw-bold text-danger" id="rejectInvitationModalLabel">
-                                    <i class="bi bi-x-circle me-2"></i>Tolak Undangan
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                    aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="alert alert-warning py-2 mb-3">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    <small>Anda akan menolak undangan dari perusahaan ini.</small>
-                                </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Perusahaan:</label>
-                                    <p class="mb-0 fw-bold text-primary" id="reject-invitation-company-name"></p>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Posisi:</label>
-                                    <p class="mb-0" id="reject-invitation-job-title"></p>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="reject-invitation-reason" class="form-label fw-bold">
-                                        Alasan Menolak (Opsional)
-                                    </label>
-                                    <textarea class="form-control" id="reject-invitation-reason" rows="4"
-                                        placeholder="Jelaskan alasan Anda menolak undangan ini..." maxlength="500"></textarea>
-                                    <div class="d-flex justify-content-end mt-1">
-                                        <small class="text-muted"><span
-                                                id="reject-invitation-char-count">0</span>/500</small>
-                                    </div>
-                                </div>
-
-                                <input type="hidden" id="reject-invitation-id">
-                            </div>
-                            <div class="modal-footer border-0">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="bi bi-arrow-left me-1"></i>Batal
-                                </button>
-                                <button type="button" class="btn btn-danger" id="submit-reject-invitation-btn">
-                                    <i class="bi bi-x-circle me-1"></i>Ya, Tolak Undangan
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- MY FEEDBACK Section -->
-                <div class="history-section" id="my-feedback-section" style="display: none;">
-                    <div class="card mb-4 border-warning">
-                        <div class="card-body p-4">
-                            <h5 class="fw-bold mb-3">
-                                <i class="bi bi-graph-up text-warning me-2"></i>Ringkasan Feedback & Rating Anda
-                            </h5>
-
-                            <div class="mb-4">
-                                <h6 class="fw-bold text-muted mb-2">
-                                    <i class="bi bi-star-fill text-warning me-2"></i>Average Rating
-                                </h6>
-                                <div class="d-flex align-items-center">
-                                    <div class="text-warning" style="font-size: 1.5rem;">
-                                        @for ($i = 1; $i <= 5; $i++)
-                                            <i
-                                                class="bi bi-star{{ $i <= round($feedbackSummary['average_rating']) ? '-fill' : '' }}"></i>
-                                        @endfor
-                                    </div>
-                                    <span
-                                        class="fs-3 fw-bold ms-3">{{ number_format($feedbackSummary['average_rating'], 1) }}</span>
-                                    <span class="text-muted ms-2">/ 5.0</span>
-                                </div>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-muted mb-3">
-                                    <i class="bi bi-tags-fill text-info me-2"></i>Feedback dari Perusahaan
-                                </h6>
-                                <div class="row g-3">
-                                    @foreach ($feedbackSummary['feedback_counts'] as $fb)
-                                        <div class="col-md-6">
-                                            <div
-                                                class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="bi bi-tag-fill text-info me-2"></i>
-                                                    <span>{{ $fb['name'] }}</span>
-                                                </div>
-                                                <span
-                                                    class="badge {{ $fb['count'] > 0 ? 'bg-success' : 'bg-secondary' }} px-3 py-2">
-                                                    {{ $fb['count'] }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @if ($feedbackApplicationsFromCompany->count() > 0)
-                        <div class="mb-4">
-                            <h4 class="fw-bold mb-3">
-                                <i class="bi bi-star text-warning me-2"></i>Feedback dari Perusahaan
-                            </h4>
-                            <div class="row g-3">
-                                @foreach ($feedbackApplicationsFromCompany as $item)
-                                    @php
-                                        $application = $item->application;
-                                        $feedbacks = $item->feedbacks; // ✅ Collection of feedbacks
-                                        $job = $application->jobPosting ?? null;
-                                        $company = $job->company ?? null;
-                                        $companyUserId = $company->user_id ?? null;
-
-                                        // ✅ Check if already reported
-                                        $isReported = in_array($application->id, $reportedApplicationIds);
-
-                                        // ✅ Check if already blocked
-                                        $isBlocked = $companyUserId
-                                            ? \App\Models\Blacklist::where('user_id', Auth::id())
-                                                ->where('blocked_user_id', $companyUserId)
-                                                ->exists()
-                                            : false;
-                                    @endphp
-
-                                    <div class="col-lg-6">
-                                        <div class="card history-card rounded-3 h-100 border">
-                                            <div class="card-body p-4">
-                                                {{-- Header Card --}}
-                                                <div class="d-flex align-items-start mb-3">
-                                                    <div class="bg-warning rounded-circle me-3 bg-opacity-10 p-3">
-                                                        <i class="bi bi-star-fill text-warning fs-4"></i>
-                                                    </div>
-                                                    <div class="flex-grow-1">
-                                                        <h6 class="fw-bold mb-1">
-                                                            {{ $job->title ?? 'Job Title' }}
-                                                        </h6>
-                                                        <p class="text-muted small mb-0">
-                                                            <i
-                                                                class="bi bi-building me-1"></i>{{ $company->name ?? 'Company' }}
-                                                        </p>
-                                                        <small class="text-muted">
-                                                            {{ $item->created_at->diffForHumans() }}
-                                                        </small>
-                                                    </div>
-                                                </div>
-
-                                                {{-- ✅ SEMUA Feedback Tags --}}
-                                                @if ($feedbacks->count() > 0)
-                                                    <div class="mb-3">
-                                                        <small class="text-muted d-block mb-2">
-                                                            <i class="bi bi-tag-fill me-1"></i>Feedback yang Diberikan
-                                                            ({{ $feedbacks->count() }})
-                                                            :
-                                                        </small>
-                                                        <div class="d-flex flex-wrap gap-2">
-                                                            @foreach ($feedbacks as $feedback)
-                                                                @if ($feedback->feedback)
-                                                                    <span class="badge bg-warning text-dark px-3 py-2">
-                                                                        <i
-                                                                            class="bi bi-tag-fill me-1"></i>{{ $feedback->feedback->name }}
-                                                                    </span>
-                                                                @endif
-                                                            @endforeach
-                                                        </div>
-                                                    </div>
-                                                @endif
-
-                                                {{-- Rating & Review dari Company --}}
-                                                @if ($application->rating_candidates || $application->review_candidate)
-                                                    <div class="border-top pt-3 mb-3">
-                                                        <h6 class="fw-bold mb-2 text-primary">
-                                                            <i class="bi bi-star-fill me-1"></i>Rating & Review
-                                                        </h6>
-
-                                                        @if ($application->rating_candidates)
-                                                            <div class="mb-2">
-                                                                <div class="d-flex align-items-center">
-                                                                    <span class="text-muted small me-2">Rating:</span>
-                                                                    <div class="text-warning">
-                                                                        @for ($i = 1; $i <= 5; $i++)
-                                                                            <i
-                                                                                class="bi bi-star{{ $i <= $application->rating_candidates ? '-fill' : '' }}"></i>
-                                                                        @endfor
-                                                                        <span
-                                                                            class="text-dark ms-1 fw-bold">({{ $application->rating_candidates }}/5)</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-
-                                                        @if ($application->review_candidate)
-                                                            <div
-                                                                class="bg-light rounded p-3 border-start border-warning border-4">
-                                                                <small class="text-muted d-block mb-1">
-                                                                    <i class="bi bi-chat-quote me-1"></i>Review:
-                                                                </small>
-                                                                <p class="small mb-0">
-                                                                    "{{ $application->review_candidate }}"</p>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                @endif
-
-                                                {{-- Info Aplikasi --}}
-                                                <div class="border-top pt-3 mb-3">
-                                                    <div class="row g-2">
-                                                        <div class="col-6">
-                                                            <small class="text-muted d-block">Status Lamaran:</small>
-                                                            @php
-                                                                $statusColors = [
-                                                                    'Applied' => 'secondary',
-                                                                    'Reviewed' => 'info',
-                                                                    'Interview' => 'warning',
-                                                                    'Accepted' => 'success',
-                                                                    'Rejected' => 'danger',
-                                                                    'Finished' => 'dark',
-                                                                ];
-                                                                $color =
-                                                                    $statusColors[$application->status] ?? 'secondary';
-                                                            @endphp
-                                                            <span
-                                                                class="badge bg-{{ $color }}">{{ $application->status }}</span>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <small class="text-muted d-block">Tanggal Melamar:</small>
-                                                            <small class="fw-bold">
-                                                                {{ $application->applied_at ? \Carbon\Carbon::parse($application->applied_at)->format('d M Y') : '-' }}
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {{-- Action Buttons --}}
-                                                <div class="border-top pt-3">
-                                                    {{-- View Detail --}}
-                                                    <button type="button"
-                                                        class="btn btn-outline-primary btn-sm w-100 mb-2 view-detail-btn"
-                                                        data-application-id="{{ $application->id }}"
-                                                        data-job-id="{{ $application->job_posting_id }}">
-                                                        <i class="bi bi-eye me-1"></i>Lihat Detail Lowongan
-                                                    </button>
-
-                                                    <div class="row g-2">
-                                                        {{-- Report Company --}}
-                                                        <div class="col-6">
-                                                            @if (!$isReported)
-                                                                <button type="button"
-                                                                    class="btn btn-outline-danger btn-sm w-100 report-company-btn-feedback"
-                                                                    data-application-id="{{ $application->id }}"
-                                                                    data-company-name="{{ $company->name ?? 'Company' }}"
-                                                                    data-job-title="{{ $job->title ?? 'Job' }}">
-                                                                    <i class="bi bi-flag-fill me-1"></i>Report
-                                                                </button>
-                                                            @else
-                                                                <button type="button"
-                                                                    class="btn btn-success btn-sm w-100" disabled>
-                                                                    <i class="bi bi-check-circle me-1"></i>Dilaporkan
-                                                                </button>
-                                                            @endif
-                                                        </div>
-
-                                                        {{-- Block Company --}}
-                                                        <div class="col-6">
-                                                            @if (!$isBlocked && $companyUserId)
-                                                                <button type="button"
-                                                                    class="btn btn-outline-dark btn-sm w-100 block-company-btn-feedback"
-                                                                    data-company-id="{{ $companyUserId }}"
-                                                                    data-company-name="{{ $company->name ?? 'Company' }}"
-                                                                    data-job-title="{{ $job->title ?? 'Job' }}">
-                                                                    <i class="bi bi-shield-x me-1"></i>Block
-                                                                </button>
-                                                            @else
-                                                                <button type="button" class="btn btn-dark btn-sm w-100"
-                                                                    disabled>
-                                                                    <i class="bi bi-shield-check me-1"></i>Diblokir
-                                                                </button>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-
-                            {{-- Pagination --}}
-                            <div class="d-flex justify-content-center mt-4">
-                                {{ $feedbackApplicationsFromCompany->appends(['status' => request('status')])->links() }}
-                            </div>
-                        </div>
-                    @else
-                        <div class="py-5 text-center">
-                            <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
-                            <h5 class="fw-bold mb-2 mt-3">Belum Ada Feedback</h5>
-                            <p class="text-muted">
-                                @if (request('status'))
-                                    Tidak ada feedback dari perusahaan untuk status "{{ ucfirst(request('status')) }}"
-                                @else
-                                    Anda belum menerima feedback dari perusahaan manapun
-                                @endif
-                            </p>
-                            <a href="{{ route('jobs.index') }}" class="btn btn-primary">
-                                <i class="bi bi-search me-2"></i>Cari Lowongan
-                            </a>
-                        </div>
-                    @endif
-                </div>
-
-                <!-- Reports History -->
-                <div class="history-section" id="reports-section" style="display: none;">
-                    @if (isset($myReports) && $myReports->count() > 0)
-                        <div class="mb-4">
-                            <h4 class="fw-bold mb-3">
-                                <i class="bi bi-flag-fill text-danger me-2"></i>Laporan yang Saya Kirim
-                            </h4>
-                            <div class="row g-3">
-                                @foreach ($myReports as $report)
-                                    @php
-                                        $application = $report->application;
-                                        $job = $application->jobPosting ?? null;
-                                    @endphp
-
-                                    <div class="col-lg-6">
-                                        <div class="card history-card rounded-3 h-100 border border-danger">
-                                            <div class="card-body p-4">
-                                                {{-- Header Card --}}
-                                                <div class="d-flex align-items-start mb-3">
-                                                    <div class="bg-danger rounded-circle me-3 bg-opacity-10 p-3">
-                                                        <i class="bi bi-flag-fill text-danger fs-4"></i>
-                                                    </div>
-                                                    <div class="flex-grow-1">
-                                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                                            <div>
-                                                                <h6 class="fw-bold mb-1">{{ $job->title ?? 'Job Title' }}
-                                                                </h6>
-                                                                <p class="text-muted small mb-0">
-                                                                    <i
-                                                                        class="bi bi-building me-1"></i>{{ $job->company->name ?? 'Company' }}
-                                                                </p>
-                                                            </div>
-                                                            @php
-                                                                $statusColors = [
-                                                                    'pending' => 'warning',
-                                                                    'approved' => 'success',
-                                                                    'rejected' => 'danger',
-                                                                ];
-                                                                $statusColor =
-                                                                    $statusColors[$report->status] ?? 'secondary';
-                                                            @endphp
-                                                            <span class="badge bg-{{ $statusColor }}">
-                                                                {{ ucfirst($report->status) }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {{-- Alasan Laporan --}}
-                                                <div class="mb-3 bg-light rounded p-3 border-start border-danger border-4">
-                                                    <small class="text-muted d-block mb-2">
-                                                        <i class="bi bi-chat-square-quote-fill text-danger me-1"></i>
-                                                        <strong>Alasan Laporan:</strong>
-                                                    </small>
-                                                    <p class="small mb-0 fst-italic">"{{ $report->reason }}"</p>
-                                                </div>
-
-                                                {{-- Rating & Review dari Perusahaan --}}
-                                                @if ($application->rating_candidates || $application->review_candidate)
-                                                    <div class="border-top pt-3 mb-3">
-                                                        <h6 class="fw-bold mb-2 text-primary">
-                                                            <i class="bi bi-star-fill me-1"></i>Rating & Review dari
-                                                            Perusahaan
-                                                        </h6>
-
-                                                        @if ($application->rating_candidates)
-                                                            <div class="mb-2">
-                                                                <div class="d-flex align-items-center">
-                                                                    <span class="text-muted small me-2">Rating:</span>
-                                                                    <div class="text-warning">
-                                                                        @for ($i = 1; $i <= 5; $i++)
-                                                                            <i
-                                                                                class="bi bi-star-fill{{ $i <= $application->rating_candidates ? '' : '-outline' }}"></i>
-                                                                        @endfor
-                                                                        <span
-                                                                            class="text-dark ms-1 fw-bold">({{ $application->rating_candidates }}/5)</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-
-                                                        @if ($application->review_candidate)
-                                                            <div class="bg-light rounded p-2">
-                                                                <small class="text-muted d-block mb-1">
-                                                                    <i class="bi bi-chat-quote me-1"></i>Review:
-                                                                </small>
-                                                                <p class="small mb-0">
-                                                                    "{{ $application->review_candidate }}"</p>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                @endif
-
-                                                {{-- Info Lowongan yang Dilaporkan --}}
-                                                @if ($job)
-                                                    <div class="border-top pt-3">
-                                                        <h6 class="fw-bold mb-3">
-                                                            <i class="bi bi-briefcase me-1"></i>Detail Lowongan
-                                                        </h6>
-
-                                                        {{-- ✅ TAMBAHKAN: Company Name & Industry --}}
-                                                        <div class="mb-3">
-                                                            <div class="d-flex align-items-start mb-2">
-                                                                <i class="bi bi-building-fill text-primary me-2 mt-1"></i>
-                                                                <div>
-                                                                    <small class="text-muted d-block">Perusahaan:</small>
-                                                                    <p class="fw-bold mb-0">
-                                                                        {{ $job->company->name ?? 'N/A' }}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="d-flex align-items-start">
-                                                                <i class="bi bi-layers-fill text-success me-2 mt-1"></i>
-                                                                <div>
-                                                                    <small class="text-muted d-block">Industri:</small>
-                                                                    <p class="fw-bold mb-0">
-                                                                        {{ $job->industry->name ?? 'N/A' }}</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {{-- Badges Type & Industry (Opsional - bisa dihapus karena sudah ada di atas) --}}
-                                                        <div class="mb-2">
-                                                            <span
-                                                                class="badge bg-light text-dark me-1">{{ $job->typeJobs->name ?? 'N/A' }}</span>
-                                                        </div>
-
-                                                        {{-- Lokasi --}}
-                                                        <p class="text-muted small mb-2">
-                                                            <i
-                                                                class="bi bi-geo-alt me-1"></i>{{ $job->city->name ?? 'N/A' }}
-                                                        </p>
-
-                                                        {{-- Gaji --}}
-                                                        <div class="mb-2">
-                                                            <h5 class="fw-bold mb-1" style="color: var(--primary-blue);">
-                                                                Rp {{ number_format($job->salary, 0, ',', '.') }}
-                                                            </h5>
-                                                            <span class="badge bg-primary" style="font-size: 0.7rem;">
-                                                                <i class="bi bi-calendar-check me-1"></i>
-                                                                {{ $job->type_salary == 'total' ? 'Total' : 'Per Hari' }}
-                                                            </span>
-                                                        </div>
-
-                                                        {{-- Jadwal Kerja --}}
-                                                        @if ($job->jobDatess && $job->jobDatess->count() > 0)
-                                                            <div class="mb-2">
-                                                                <small class="text-muted d-block mb-1 fw-bold">
-                                                                    <i class="bi bi-calendar-event me-1"></i>Jadwal Kerja:
-                                                                </small>
-                                                                @foreach ($job->jobDatess->take(2) as $jobDate)
-                                                                    <small class="text-muted d-block ms-3">
-                                                                        <i class="bi bi-dot"></i>
-                                                                        {{ \Carbon\Carbon::parse($jobDate->date)->format('d M Y') }}
-                                                                        @if ($jobDate->day)
-                                                                            <span class="badge bg-info text-white ms-1"
-                                                                                style="font-size: 0.6rem;">
-                                                                                {{ $jobDate->day->name }}
-                                                                            </span>
-                                                                        @endif
-                                                                        @if ($jobDate->start_time && $jobDate->end_time)
-                                                                            <span class="ms-1">
-                                                                                <i class="bi bi-clock me-1"></i>
-                                                                                {{ \Carbon\Carbon::parse($jobDate->start_time)->format('H:i') }}
-                                                                                -
-                                                                                {{ \Carbon\Carbon::parse($jobDate->end_time)->format('H:i') }}
-                                                                            </span>
-                                                                        @endif
-                                                                    </small>
-                                                                @endforeach
-                                                                @if ($job->jobDatess->count() > 2)
-                                                                    <small class="text-muted d-block ms-3 mt-1">
-                                                                        <span class="badge bg-secondary"
-                                                                            style="font-size: 0.6rem;">
-                                                                            +{{ $job->jobDatess->count() - 2 }} jadwal
-                                                                            lainnya
-                                                                        </span>
-                                                                    </small>
-                                                                @endif
-                                                            </div>
-                                                        @endif
-
-                                                        {{-- Slot --}}
-                                                        <small class="text-muted d-block">
-                                                            <i class="bi bi-people-fill me-1"></i>Slot:
-                                                            {{ $job->slot }}
-                                                        </small>
-                                                    </div>
-                                                @endif
-
-                                                {{-- Footer --}}
-                                                <div class="border-top pt-3 mt-3">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <small class="text-muted">
-                                                            <i class="bi bi-calendar3 me-1"></i>Dilaporkan:
-                                                            {{ $report->created_at->format('d M Y, H:i') }}
-                                                        </small>
-                                                        <small class="text-muted">
-                                                            ID: #{{ $report->id }}
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-
-                            <div class="d-flex justify-content-center mt-4">
-                                {{ $myReports->links() }}
-                            </div>
-                        </div>
-                    @else
-                        <div class="py-5 text-center">
-                            <i class="bi bi-flag text-muted" style="font-size: 4rem;"></i>
-                            <h5 class="fw-bold mb-2 mt-3">Belum Ada Laporan</h5>
-                            <p class="text-muted">Anda belum pernah melaporkan perusahaan apapun</p>
-                        </div>
-                    @endif
-                </div>
-
-                <!-- BLOCKED COMPANIES Section -->
-                <div class="history-section" id="blocked-section" style="display: none;">
-                    @if (isset($blockedCompanies) && $blockedCompanies->count() > 0)
-                        <div class="mb-4">
-                            <h4 class="fw-bold mb-3">
-                                <i class="bi bi-shield-x text-dark me-2"></i>Perusahaan yang Diblokir
-                            </h4>
-                            <div class="row g-3">
-                                @foreach ($blockedCompanies as $blocked)
-                                    <div class="col-lg-6">
-                                        <div class="card history-card rounded-3 h-100 border border-dark">
-                                            <div class="card-body p-4">
-                                                <div class="d-flex align-items-start mb-3">
-                                                    <div class="bg-dark rounded-circle me-3 bg-opacity-10 p-3">
-                                                        <i class="bi bi-shield-x text-dark fs-4"></i>
-                                                    </div>
-                                                    <div class="flex-grow-1">
-                                                        <h6 class="fw-bold mb-1">
-                                                            {{ $blocked->blockedUser->company->name ?? 'Company Name' }}
-                                                        </h6>
-                                                        <p class="text-muted small mb-0">
-                                                            <i class="bi bi-clock me-1"></i>
-                                                            Diblokir {{ $blocked->created_at->diffForHumans() }}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                @if ($blocked->reason)
-                                                    <div
-                                                        class="mb-3 bg-light rounded p-3 border-start border-dark border-4">
-                                                        <small class="text-muted d-block mb-2">
-                                                            <i class="bi bi-chat-square-quote-fill text-dark me-1"></i>
-                                                            <strong>Alasan Blokir:</strong>
-                                                        </small>
-                                                        <p class="small mb-0 fst-italic">"{{ $blocked->reason }}"</p>
-                                                    </div>
-                                                @endif
-
-                                                <div class="border-top pt-3">
-                                                    <button class="btn btn-success btn-sm w-100 unblock-company-btn"
-                                                        data-blacklist-id="{{ $blocked->id }}"
-                                                        data-company-id="{{ $blocked->blocked_user_id }}"
-                                                        data-company-name="{{ $blocked->blockedUser->company->name ?? 'Company' }}">
-                                                        <i class="bi bi-shield-check me-1"></i>Buka Blokir
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-
-                            <div class="d-flex justify-content-center mt-4">
-                                {{ $blockedCompanies->links() }}
-                            </div>
-                        </div>
-                    @else
-                        <div class="py-5 text-center">
-                            <i class="bi bi-shield-check text-muted" style="font-size: 4rem;"></i>
-                            <h5 class="fw-bold mb-2 mt-3">Tidak Ada Perusahaan yang Diblokir</h5>
-                            <p class="text-muted">Anda belum memblokir perusahaan apapun</p>
-                        </div>
-                    @endif
-                </div>
             </div>
+            <!-- MY FEEDBACK Section -->
+            <div class="history-section" id="my-feedback-section" style="display: none;">
+                <div class="card mb-4 border-warning">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-graph-up text-warning me-2"></i>Ringkasan Feedback & Rating Anda
+                        </h5>
+
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-muted mb-2">
+                                <i class="bi bi-star-fill text-warning me-2"></i>Average Rating
+                            </h6>
+                            <div class="d-flex align-items-center">
+                                <div class="text-warning" style="font-size: 1.5rem;">
+                                    @for ($i = 1; $i <= 5; $i++)
+                                        <i
+                                            class="bi bi-star{{ $i <= round($feedbackSummary['average_rating']) ? '-fill' : '' }}"></i>
+                                    @endfor
+                                </div>
+                                <span
+                                    class="fs-3 fw-bold ms-3">{{ number_format($feedbackSummary['average_rating'], 1) }}</span>
+                                <span class="text-muted ms-2">/ 5.0</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-muted mb-3">
+                                <i class="bi bi-tags-fill text-info me-2"></i>Feedback dari Perusahaan
+                            </h6>
+                            <div class="row g-3">
+                                @foreach ($feedbackSummary['feedback_counts'] as $fb)
+                                    <div class="col-md-6">
+                                        <div
+                                            class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-tag-fill text-info me-2"></i>
+                                                <span>{{ $fb['name'] }}</span>
+                                            </div>
+                                            <span
+                                                class="badge {{ $fb['count'] > 0 ? 'bg-success' : 'bg-secondary' }} px-3 py-2">
+                                                {{ $fb['count'] }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if ($feedbackApplicationsFromCompany->count() > 0)
+                    <div class="mb-4">
+                        <h4 class="fw-bold mb-3">
+                            <i class="bi bi-star text-warning me-2"></i>Feedback dari Perusahaan
+                        </h4>
+                        <div class="row g-3">
+                            @foreach ($feedbackApplicationsFromCompany as $item)
+                                @php
+                                    $application = $item->application;
+                                    $feedbacks = $item->feedbacks; // ✅ Collection of feedbacks
+                                    $job = $application->jobPosting ?? null;
+                                    $company = $job->company ?? null;
+                                    $companyUserId = $company->user_id ?? null;
+
+                                    // ✅ Check if already reported
+                                    $isReported = in_array($application->id, $reportedApplicationIds);
+
+                                    // ✅ Check if already blocked
+                                    $isBlocked = $companyUserId
+                                        ? \App\Models\Blacklist::where('user_id', Auth::id())
+                                            ->where('blocked_user_id', $companyUserId)
+                                            ->exists()
+                                        : false;
+                                @endphp
+
+                                <div class="col-lg-6">
+                                    <div class="card history-card rounded-3 h-100 border">
+                                        <div class="card-body p-4">
+                                            {{-- Header Card --}}
+                                            <div class="d-flex align-items-start mb-3">
+                                                <div class="bg-warning rounded-circle me-3 bg-opacity-10 p-3">
+                                                    <i class="bi bi-star-fill text-warning fs-4"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="fw-bold mb-1">
+                                                        {{ $job->title ?? 'Job Title' }}
+                                                    </h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i
+                                                            class="bi bi-building me-1"></i>{{ $company->name ?? 'Company' }}
+                                                    </p>
+                                                    <small class="text-muted">
+                                                        {{ $item->created_at->diffForHumans() }}
+                                                    </small>
+                                                </div>
+                                            </div>
+
+                                            {{-- ✅ SEMUA Feedback Tags --}}
+                                            @if ($feedbacks->count() > 0)
+                                                <div class="mb-3">
+                                                    <small class="text-muted d-block mb-2">
+                                                        <i class="bi bi-tag-fill me-1"></i>Feedback yang Diberikan
+                                                        ({{ $feedbacks->count() }})
+                                                        :
+                                                    </small>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        @foreach ($feedbacks as $feedback)
+                                                            @if ($feedback->feedback)
+                                                                <span class="badge bg-warning text-dark px-3 py-2">
+                                                                    <i
+                                                                        class="bi bi-tag-fill me-1"></i>{{ $feedback->feedback->name }}
+                                                                </span>
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            {{-- Rating & Review dari Company --}}
+                                            @if ($application->rating_candidates || $application->review_candidate)
+                                                <div class="border-top pt-3 mb-3">
+                                                    <h6 class="fw-bold mb-2 text-primary">
+                                                        <i class="bi bi-star-fill me-1"></i>Rating & Review
+                                                    </h6>
+
+                                                    @if ($application->rating_candidates)
+                                                        <div class="mb-2">
+                                                            <div class="d-flex align-items-center">
+                                                                <span class="text-muted small me-2">Rating:</span>
+                                                                <div class="text-warning">
+                                                                    @for ($i = 1; $i <= 5; $i++)
+                                                                        <i
+                                                                            class="bi bi-star{{ $i <= $application->rating_candidates ? '-fill' : '' }}"></i>
+                                                                    @endfor
+                                                                    <span
+                                                                        class="text-dark ms-1 fw-bold">({{ $application->rating_candidates }}/5)</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+
+                                                    @if ($application->review_candidate)
+                                                        <div
+                                                            class="bg-light rounded p-3 border-start border-warning border-4">
+                                                            <small class="text-muted d-block mb-1">
+                                                                <i class="bi bi-chat-quote me-1"></i>Review:
+                                                            </small>
+                                                            <p class="small mb-0">
+                                                                "{{ $application->review_candidate }}"</p>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
+
+                                            {{-- Info Aplikasi --}}
+                                            <div class="border-top pt-3 mb-3">
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">Status Lamaran:</small>
+                                                        @php
+                                                            $statusColors = [
+                                                                'Applied' => 'secondary',
+                                                                'Reviewed' => 'info',
+                                                                'Interview' => 'warning',
+                                                                'Accepted' => 'success',
+                                                                'Rejected' => 'danger',
+                                                                'Finished' => 'dark',
+                                                            ];
+                                                            $color = $statusColors[$application->status] ?? 'secondary';
+                                                        @endphp
+                                                        <span
+                                                            class="badge bg-{{ $color }}">{{ $application->status }}</span>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">Tanggal Melamar:</small>
+                                                        <small class="fw-bold">
+                                                            {{ $application->applied_at ? \Carbon\Carbon::parse($application->applied_at)->format('d M Y') : '-' }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Action Buttons --}}
+                                            <div class="border-top pt-3">
+                                                {{-- View Detail --}}
+                                                <button type="button"
+                                                    class="btn btn-outline-primary btn-sm w-100 mb-2 view-detail-btn"
+                                                    data-application-id="{{ $application->id }}"
+                                                    data-job-id="{{ $application->job_posting_id }}">
+                                                    <i class="bi bi-eye me-1"></i>Lihat Detail Lowongan
+                                                </button>
+
+                                                <div class="row g-2">
+                                                    {{-- Report Company --}}
+                                                    <div class="col-6">
+                                                        @if (!$isReported)
+                                                            <button type="button"
+                                                                class="btn btn-outline-danger btn-sm w-100 report-company-btn-feedback"
+                                                                data-application-id="{{ $application->id }}"
+                                                                data-company-name="{{ $company->name ?? 'Company' }}"
+                                                                data-job-title="{{ $job->title ?? 'Job' }}">
+                                                                <i class="bi bi-flag-fill me-1"></i>Report
+                                                            </button>
+                                                        @else
+                                                            <button type="button" class="btn btn-success btn-sm w-100"
+                                                                disabled>
+                                                                <i class="bi bi-check-circle me-1"></i>Dilaporkan
+                                                            </button>
+                                                        @endif
+                                                    </div>
+
+                                                    {{-- Block Company --}}
+                                                    <div class="col-6">
+                                                        @if (!$isBlocked && $companyUserId)
+                                                            <button type="button"
+                                                                class="btn btn-outline-dark btn-sm w-100 block-company-btn-feedback"
+                                                                data-company-id="{{ $companyUserId }}"
+                                                                data-company-name="{{ $company->name ?? 'Company' }}"
+                                                                data-job-title="{{ $job->title ?? 'Job' }}">
+                                                                <i class="bi bi-shield-x me-1"></i>Block
+                                                            </button>
+                                                        @else
+                                                            <button type="button" class="btn btn-dark btn-sm w-100"
+                                                                disabled>
+                                                                <i class="bi bi-shield-check me-1"></i>Diblokir
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Pagination --}}
+                        <div class="d-flex justify-content-center mt-4">
+                            {{ $feedbackApplicationsFromCompany->appends(['status' => request('status')])->links() }}
+                        </div>
+                    </div>
+                @else
+                    <div class="py-5 text-center">
+                        <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="fw-bold mb-2 mt-3">Belum Ada Feedback</h5>
+                        <p class="text-muted">
+                            @if (request('status'))
+                                Tidak ada feedback dari perusahaan untuk status "{{ ucfirst(request('status')) }}"
+                            @else
+                                Anda belum menerima feedback dari perusahaan manapun
+                            @endif
+                        </p>
+                        <a href="{{ route('jobs.index') }}" class="btn btn-primary">
+                            <i class="bi bi-search me-2"></i>Cari Lowongan
+                        </a>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Reports History -->
+            <div class="history-section" id="reports-section" style="display: none;">
+                @if (isset($myReports) && $myReports->count() > 0)
+                    <div class="mb-4">
+                        <h4 class="fw-bold mb-3">
+                            <i class="bi bi-flag-fill text-danger me-2"></i>Laporan yang Saya Kirim
+                        </h4>
+                        <div class="row g-3">
+                            @foreach ($myReports as $report)
+                                @php
+                                    $application = $report->application;
+                                    $job = $application->jobPosting ?? null;
+                                @endphp
+
+                                <div class="col-lg-6">
+                                    <div class="card history-card rounded-3 h-100 border border-danger">
+                                        <div class="card-body p-4">
+                                            {{-- Header Card --}}
+                                            <div class="d-flex align-items-start mb-3">
+                                                <div class="bg-danger rounded-circle me-3 bg-opacity-10 p-3">
+                                                    <i class="bi bi-flag-fill text-danger fs-4"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <div>
+                                                            <h6 class="fw-bold mb-1">{{ $job->title ?? 'Job Title' }}
+                                                            </h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i
+                                                                    class="bi bi-building me-1"></i>{{ $job->company->name ?? 'Company' }}
+                                                            </p>
+                                                        </div>
+                                                        @php
+                                                            $statusColors = [
+                                                                'pending' => 'warning',
+                                                                'approved' => 'success',
+                                                                'rejected' => 'danger',
+                                                            ];
+                                                            $statusColor =
+                                                                $statusColors[$report->status] ?? 'secondary';
+                                                        @endphp
+                                                        <span class="badge bg-{{ $statusColor }}">
+                                                            {{ ucfirst($report->status) }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Alasan Laporan --}}
+                                            <div class="mb-3 bg-light rounded p-3 border-start border-danger border-4">
+                                                <small class="text-muted d-block mb-2">
+                                                    <i class="bi bi-chat-square-quote-fill text-danger me-1"></i>
+                                                    <strong>Alasan Laporan:</strong>
+                                                </small>
+                                                <p class="small mb-0 fst-italic">"{{ $report->reason }}"</p>
+                                            </div>
+
+                                            {{-- Rating & Review dari Perusahaan --}}
+                                            @if ($application->rating_candidates || $application->review_candidate)
+                                                <div class="border-top pt-3 mb-3">
+                                                    <h6 class="fw-bold mb-2 text-primary">
+                                                        <i class="bi bi-star-fill me-1"></i>Rating & Review dari
+                                                        Perusahaan
+                                                    </h6>
+
+                                                    @if ($application->rating_candidates)
+                                                        <div class="mb-2">
+                                                            <div class="d-flex align-items-center">
+                                                                <span class="text-muted small me-2">Rating:</span>
+                                                                <div class="text-warning">
+                                                                    @for ($i = 1; $i <= 5; $i++)
+                                                                        <i
+                                                                            class="bi bi-star-fill{{ $i <= $application->rating_candidates ? '' : '-outline' }}"></i>
+                                                                    @endfor
+                                                                    <span
+                                                                        class="text-dark ms-1 fw-bold">({{ $application->rating_candidates }}/5)</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+
+                                                    @if ($application->review_candidate)
+                                                        <div class="bg-light rounded p-2">
+                                                            <small class="text-muted d-block mb-1">
+                                                                <i class="bi bi-chat-quote me-1"></i>Review:
+                                                            </small>
+                                                            <p class="small mb-0">
+                                                                "{{ $application->review_candidate }}"</p>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
+
+                                            {{-- Info Lowongan yang Dilaporkan --}}
+                                            @if ($job)
+                                                <div class="border-top pt-3">
+                                                    <h6 class="fw-bold mb-3">
+                                                        <i class="bi bi-briefcase me-1"></i>Detail Lowongan
+                                                    </h6>
+
+                                                    {{-- ✅ TAMBAHKAN: Company Name & Industry --}}
+                                                    <div class="mb-3">
+                                                        <div class="d-flex align-items-start mb-2">
+                                                            <i class="bi bi-building-fill text-primary me-2 mt-1"></i>
+                                                            <div>
+                                                                <small class="text-muted d-block">Perusahaan:</small>
+                                                                <p class="fw-bold mb-0">
+                                                                    {{ $job->company->name ?? 'N/A' }}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex align-items-start">
+                                                            <i class="bi bi-layers-fill text-success me-2 mt-1"></i>
+                                                            <div>
+                                                                <small class="text-muted d-block">Industri:</small>
+                                                                <p class="fw-bold mb-0">
+                                                                    {{ $job->industry->name ?? 'N/A' }}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Badges Type & Industry (Opsional - bisa dihapus karena sudah ada di atas) --}}
+                                                    <div class="mb-2">
+                                                        <span
+                                                            class="badge bg-light text-dark me-1">{{ $job->typeJobs->name ?? 'N/A' }}</span>
+                                                    </div>
+
+                                                    {{-- Lokasi --}}
+                                                    <p class="text-muted small mb-2">
+                                                        <i class="bi bi-geo-alt me-1"></i>{{ $job->city->name ?? 'N/A' }}
+                                                    </p>
+
+                                                    {{-- Gaji --}}
+                                                    <div class="mb-2">
+                                                        <h5 class="fw-bold mb-1" style="color: var(--primary-blue);">
+                                                            Rp {{ number_format($job->salary, 0, ',', '.') }}
+                                                        </h5>
+                                                        <span class="badge bg-primary" style="font-size: 0.7rem;">
+                                                            <i class="bi bi-calendar-check me-1"></i>
+                                                            {{ $job->type_salary == 'total' ? 'Total' : 'Per Hari' }}
+                                                        </span>
+                                                    </div>
+
+                                                    {{-- Jadwal Kerja --}}
+                                                    @if ($job->jobDatess && $job->jobDatess->count() > 0)
+                                                        <div class="mb-2">
+                                                            <small class="text-muted d-block mb-1 fw-bold">
+                                                                <i class="bi bi-calendar-event me-1"></i>Jadwal Kerja:
+                                                            </small>
+                                                            @foreach ($job->jobDatess->take(2) as $jobDate)
+                                                                <small class="text-muted d-block ms-3">
+                                                                    <i class="bi bi-dot"></i>
+                                                                    {{ \Carbon\Carbon::parse($jobDate->date)->format('d M Y') }}
+                                                                    @if ($jobDate->day)
+                                                                        <span class="badge bg-info text-white ms-1"
+                                                                            style="font-size: 0.6rem;">
+                                                                            {{ $jobDate->day->name }}
+                                                                        </span>
+                                                                    @endif
+                                                                    @if ($jobDate->start_time && $jobDate->end_time)
+                                                                        <span class="ms-1">
+                                                                            <i class="bi bi-clock me-1"></i>
+                                                                            {{ \Carbon\Carbon::parse($jobDate->start_time)->format('H:i') }}
+                                                                            -
+                                                                            {{ \Carbon\Carbon::parse($jobDate->end_time)->format('H:i') }}
+                                                                        </span>
+                                                                    @endif
+                                                                </small>
+                                                            @endforeach
+                                                            @if ($job->jobDatess->count() > 2)
+                                                                <small class="text-muted d-block ms-3 mt-1">
+                                                                    <span class="badge bg-secondary"
+                                                                        style="font-size: 0.6rem;">
+                                                                        +{{ $job->jobDatess->count() - 2 }} jadwal
+                                                                        lainnya
+                                                                    </span>
+                                                                </small>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+
+                                                    {{-- Slot --}}
+                                                    <small class="text-muted d-block">
+                                                        <i class="bi bi-people-fill me-1"></i>Slot:
+                                                        {{ $job->slot }}
+                                                    </small>
+                                                </div>
+                                            @endif
+
+                                            {{-- Footer --}}
+                                            <div class="border-top pt-3 mt-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-calendar3 me-1"></i>Dilaporkan:
+                                                        {{ $report->created_at->format('d M Y, H:i') }}
+                                                    </small>
+                                                    <small class="text-muted">
+                                                        ID: #{{ $report->id }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="d-flex justify-content-center mt-4">
+                            {{ $myReports->links() }}
+                        </div>
+                    </div>
+                @else
+                    <div class="py-5 text-center">
+                        <i class="bi bi-flag text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="fw-bold mb-2 mt-3">Belum Ada Laporan</h5>
+                        <p class="text-muted">Anda belum pernah melaporkan perusahaan apapun</p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- BLOCKED COMPANIES Section -->
+            <div class="history-section" id="blocked-section" style="display: none;">
+                @if (isset($blockedCompanies) && $blockedCompanies->count() > 0)
+                    <div class="mb-4">
+                        <h4 class="fw-bold mb-3">
+                            <i class="bi bi-shield-x text-dark me-2"></i>Perusahaan yang Diblokir
+                        </h4>
+                        <div class="row g-3">
+                            @foreach ($blockedCompanies as $blocked)
+                                <div class="col-lg-6">
+                                    <div class="card history-card rounded-3 h-100 border border-dark">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-start mb-3">
+                                                <div class="bg-dark rounded-circle me-3 bg-opacity-10 p-3">
+                                                    <i class="bi bi-shield-x text-dark fs-4"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="fw-bold mb-1">
+                                                        {{ $blocked->blockedUser->company->name ?? 'Company Name' }}
+                                                    </h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="bi bi-clock me-1"></i>
+                                                        Diblokir {{ $blocked->created_at->diffForHumans() }}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            @if ($blocked->reason)
+                                                <div class="mb-3 bg-light rounded p-3 border-start border-dark border-4">
+                                                    <small class="text-muted d-block mb-2">
+                                                        <i class="bi bi-chat-square-quote-fill text-dark me-1"></i>
+                                                        <strong>Alasan Blokir:</strong>
+                                                    </small>
+                                                    <p class="small mb-0 fst-italic">"{{ $blocked->reason }}"</p>
+                                                </div>
+                                            @endif
+
+                                            <div class="border-top pt-3">
+                                                <button class="btn btn-success btn-sm w-100 unblock-company-btn"
+                                                    data-blacklist-id="{{ $blocked->id }}"
+                                                    data-company-id="{{ $blocked->blocked_user_id }}"
+                                                    data-company-name="{{ $blocked->blockedUser->company->name ?? 'Company' }}">
+                                                    <i class="bi bi-shield-check me-1"></i>Buka Blokir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="d-flex justify-content-center mt-4">
+                            {{ $blockedCompanies->links() }}
+                        </div>
+                    </div>
+                @else
+                    <div class="py-5 text-center">
+                        <i class="bi bi-shield-check text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="fw-bold mb-2 mt-3">Tidak Ada Perusahaan yang Diblokir</h5>
+                        <p class="text-muted">Anda belum memblokir perusahaan apapun</p>
+                    </div>
+                @endif
+            </div>
+        </div>
         </div>
     </section>
 
@@ -1620,9 +1629,11 @@
             }
 
             // ===== ACCEPT INVITATION =====
-            document.querySelectorAll('.accept-invitation-action-btn').forEach(button => {
+            // ===== ACCEPT INVITATION - FIXED =====
+            document.querySelectorAll('.accept-invitation-btn').forEach(button => {
                 button.addEventListener('click', async function() {
-                    const invitationId = this.dataset.invitationId;
+                    const invitationId = this.dataset.invitationId || this.dataset
+                        .applicationId;
                     const companyName = this.dataset.companyName;
                     const jobTitle = this.dataset.jobTitle;
                     const hasInterview = this.dataset.hasInterview;
@@ -1637,27 +1648,37 @@
                     const result = await Swal.fire({
                         title: 'Terima Undangan?',
                         html: `
-                        <div class="text-start">
-                            <p><strong>Perusahaan:</strong> ${companyName}</p>
-                            <p><strong>Posisi:</strong> ${jobTitle}</p>
-                            <div class="alert alert-info mt-3">
-                                <i class="bi bi-info-circle me-2"></i>
-                                ${hasInterview == 1 
-                                    ? 'Anda akan masuk ke tahap <strong>wawancara</strong>' 
-                                    : 'Anda akan langsung <strong>diterima</strong> untuk posisi ini'}
-                            </div>
-                        </div>
-                    `,
+                <div class="text-start">
+                    <p><strong>Perusahaan:</strong> ${companyName}</p>
+                    <p><strong>Posisi:</strong> ${jobTitle}</p>
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        ${hasInterview == 1 
+                            ? 'Anda akan masuk ke tahap <strong>Seleksi/Wawancara</strong>' 
+                            : 'Anda akan langsung <strong>Diterima</strong> untuk posisi ini'}
+                    </div>
+                </div>
+            `,
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-check-circle me-1"></i>Ya, Terima',
-                        cancelButtonText: 'Batal',
+                        cancelButtonText: 'Tidak',
                         confirmButtonColor: '#28a745',
                         cancelButtonColor: '#6c757d',
                         reverseButtons: true
                     });
 
                     if (!result.isConfirmed) return;
+
+                    // Show loading
+                    Swal.fire({
+                        title: 'Memproses...',
+                        html: 'Mohon tunggu sebentar',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
 
                     try {
                         const response = await fetch(
@@ -1697,9 +1718,9 @@
                 });
             });
 
-            // ===== REJECT INVITATION =====
+            // ===== REJECT INVITATION - FIXED (Tanpa Alasan) =====
             document.querySelectorAll('.reject-invitation-btn').forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', async function() {
                     const invitationId = this.dataset.invitationId;
                     const companyName = this.dataset.companyName;
                     const jobTitle = this.dataset.jobTitle;
@@ -1710,52 +1731,66 @@
                         jobTitle
                     });
 
-                    document.getElementById('reject-invitation-id').value = invitationId;
-                    document.getElementById('reject-invitation-company-name').textContent =
-                        companyName;
-                    document.getElementById('reject-invitation-job-title').textContent = jobTitle;
-                    document.getElementById('reject-invitation-reason').value = '';
+                    const result = await Swal.fire({
+                        title: 'Tolak Undangan?',
+                        html: `
+                <div class="text-start">
+                    <p><strong>Perusahaan:</strong> ${companyName}</p>
+                    <p><strong>Posisi:</strong> ${jobTitle}</p>
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Anda yakin ingin menolak undangan ini?
+                    </div>
+                </div>
+            `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="bi bi-x-circle me-1"></i>Ya, Tolak',
+                        cancelButtonText: 'Tidak',
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true
+                    });
 
-                    const counter = document.getElementById('reject-invitation-char-count');
-                    if (counter) counter.textContent = '0';
+                    if (!result.isConfirmed) return;
 
-                    new bootstrap.Modal(document.getElementById('rejectInvitationModal')).show();
+                    try {
+                        const response = await fetch(
+                            `/applications/${invitationId}/reject-invitation`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json'
+                                }
+                            });
+
+                        const data = await response.json();
+                        console.log('📥 Reject invitation response:', data);
+
+                        if (response.ok && data.success) {
+                            await Swal.fire({
+                                icon: 'success',
+                                title: 'Undangan Ditolak',
+                                text: data.message,
+                                confirmButtonColor: '#28a745'
+                            });
+                            location.reload();
+                        } else {
+                            throw new Error(data.message || 'Gagal menolak undangan');
+                        }
+                    } catch (error) {
+                        console.error('❌ Reject invitation error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: error.message,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
                 });
             });
-
-            const submitRejectBtn = document.getElementById('submit-reject-invitation-btn');
-            if (submitRejectBtn) {
-                submitRejectBtn.addEventListener('click', async function() {
-                    const invitationId = document.getElementById('reject-invitation-id').value;
-                    const reason = document.getElementById('reject-invitation-reason').value.trim();
-
-                    if (reason.length < 10) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Perhatian',
-                            text: 'Alasan harus minimal 10 karakter',
-                            confirmButtonColor: '#ffc107'
-                        });
-                        return;
-                    }
-
-                    const modalElement = document.getElementById('rejectInvitationModal');
-                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                    if (modalInstance) modalInstance.hide();
-
-                    // TODO: Implement reject invitation API
-                    console.log('📤 Rejecting invitation:', {
-                        invitationId,
-                        reason
-                    });
-
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Coming Soon',
-                        text: 'Fitur tolak undangan sedang dalam pengembangan'
-                    });
-                });
-            }
 
             // ===== WITHDRAW APPLICATION =====
             document.querySelectorAll('.withdraw-btn').forEach(button => {
@@ -1784,7 +1819,7 @@
                     // ✅ Update status badge
                     const statusBadge = document.getElementById('withdraw-status-badge');
                     const statusColors = {
-                        'invited': 'warning',
+                        'Invited': 'warning',
                         'Applied': 'secondary',
                         'Reviewed': 'info',
                         'Interview': 'warning',
@@ -1927,11 +1962,11 @@
                         <p class="mb-2">${companyName}</p>
                     </div>
                     ${jobTitle ? `
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-bold">Dari Lowongan:</label>
-                                                                        <p class="mb-2">${jobTitle}</p>
-                                                                    </div>
-                                                                ` : ''}
+                                                                                                                                                    <div class="mb-3">
+                                                                                                                                                        <label class="form-label fw-bold">Dari Lowongan:</label>
+                                                                                                                                                        <p class="mb-2">${jobTitle}</p>
+                                                                                                                                                    </div>
+                                                                                                                                                ` : ''}
                     <div class="mb-3">
                         <label for="block-reason-feedback" class="form-label fw-bold">
                             Alasan Memblokir <span class="text-danger">*</span>
@@ -2219,11 +2254,11 @@
                                 <p class="mb-2">${companyName}</p>
                             </div>
                             ${jobTitle ? `
-                                                                                                                                                                                <div class="mb-3">
-                                                                                                                                                                                    <label class="form-label fw-bold">Dari Lowongan:</label>
-                                                                                                                                                                                    <p class="mb-2">${jobTitle}</p>
-                                                                                                                                                                                </div>
-                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                                                                                    <label class="form-label fw-bold">Dari Lowongan:</label>
+                                                                                                                                                                                                                                                                    <p class="mb-2">${jobTitle}</p>
+                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                            ` : ''}
                             <div class="mb-3">
                                 <label for="block-reason" class="form-label fw-bold">
                                     Alasan Memblokir <span class="text-danger">*</span>
@@ -2435,6 +2470,111 @@
 
             console.log('✅ All event listeners attached successfully');
         });
+        // ===== REJECT INVITATION - UPDATED =====
+        document.querySelectorAll('.reject-invitation-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const invitationId = this.dataset.invitationId;
+                const companyName = this.dataset.companyName;
+                const jobTitle = this.dataset.jobTitle;
+
+                console.log('❌ Reject invitation clicked:', {
+                    invitationId,
+                    companyName,
+                    jobTitle
+                });
+
+                document.getElementById('reject-invitation-id').value = invitationId;
+                document.getElementById('reject-invitation-company-name').textContent = companyName;
+                document.getElementById('reject-invitation-job-title').textContent = jobTitle;
+                document.getElementById('reject-invitation-reason').value = '';
+
+                const counter = document.getElementById('reject-invitation-char-count');
+                if (counter) counter.textContent = '0';
+
+                new bootstrap.Modal(document.getElementById('rejectInvitationModal')).show();
+            });
+        });
+
+        const submitRejectBtn = document.getElementById('submit-reject-invitation-btn');
+        if (submitRejectBtn) {
+            submitRejectBtn.addEventListener('click', async function() {
+                const invitationId = document.getElementById('reject-invitation-id').value;
+                const reason = document.getElementById('reject-invitation-reason').value.trim();
+
+                // Validasi opsional - reason boleh kosong
+                if (reason.length > 0 && reason.length < 10) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Jika diisi, alasan harus minimal 10 karakter',
+                        confirmButtonColor: '#ffc107'
+                    });
+                    return;
+                }
+
+                // Tutup modal
+                const modalElement = document.getElementById('rejectInvitationModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) modalInstance.hide();
+
+                // Show loading
+                Swal.fire({
+                    title: 'Memproses...',
+                    html: 'Mohon tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const response = await fetch(`/applications/${invitationId}/reject-invitation`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            reason: reason
+                        })
+                    });
+
+                    const data = await response.json();
+                    console.log('📥 Reject invitation response:', data);
+
+                    if (response.ok && data.success) {
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Undangan Ditolak',
+                            html: `
+                        <div class="text-start">
+                            <p>${data.message}</p>
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <small>Undangan dari <strong>${data.data.company_name}</strong> telah ditolak.</small>
+                            </div>
+                        </div>
+                    `,
+                            confirmButtonColor: '#28a745',
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                        location.reload();
+                    } else {
+                        throw new Error(data.message || 'Gagal menolak undangan');
+                    }
+                } catch (error) {
+                    console.error('❌ Reject invitation error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: error.message,
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            });
+        }
         // ✅ RATE COMPANY - Kasih Bintang
         document.querySelectorAll('.rate-company-btn').forEach(button => {
             button.addEventListener('click', async function() {
@@ -2462,9 +2602,9 @@
                         </label>
                         <div class="star-rating" id="starRatingCompany">
                             ${[1,2,3,4,5].map(star => `
-                                                                                                                        <i class="bi bi-star star-icon-company" data-rating="${star}" 
-                                                                                                                           style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
-                                                                                                                    `).join('')}
+                                                                                                                                                                                                        <i class="bi bi-star star-icon-company" data-rating="${star}" 
+                                                                                                                                                                                                           style="font-size: 2rem; cursor: pointer; color: #d1d5db;"></i>
+                                                                                                                                                                                                    `).join('')}
                         </div>
                         <input type="hidden" id="ratingCompanyValue" value="0">
                     </div>
@@ -2667,39 +2807,39 @@
                     </div>
 
                     ${review ? `
-                                                                                                                <div class="mb-3 pb-3 border-bottom">
-                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
-                                                                                                                        <i class="bi bi-chat-quote-fill me-2"></i>Review Anda
-                                                                                                                    </label>
-                                                                                                                    <div class="p-3 bg-light rounded mt-2">
-                                                                                                                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${review}</p>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                            ` : ''}
+                                                                                                                                                                                                <div class="mb-3 pb-3 border-bottom">
+                                                                                                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                                                                                                                        <i class="bi bi-chat-quote-fill me-2"></i>Review Anda
+                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                    <div class="p-3 bg-light rounded mt-2">
+                                                                                                                                                                                                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${review}</p>
+                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                            ` : ''}
 
                     ${feedbacks ? `
-                                                                                                                <div class="mb-3">
-                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
-                                                                                                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
-                                                                                                                    </label>
-                                                                                                                    <div class="d-flex flex-wrap gap-2 mt-2">
-                                                                                                                        ${feedbacks.split(', ').map(fb => `
+                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                                                                                                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                                                                                                                                                                                        ${feedbacks.split(', ').map(fb => `
                                     <span class="badge bg-warning px-3 py-2" style="font-size: 0.875rem;">
                                         <i class="bi bi-tag-fill me-1"></i>${fb}
                                     </span>
                                 `).join('')}
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                            ` : `
-                                                                                                                <div class="mb-3">
-                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
-                                                                                                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
-                                                                                                                    </label>
-                                                                                                                    <p class="text-muted mb-0 mt-2">
-                                                                                                                        <i class="bi bi-info-circle me-2"></i>Tidak ada feedback yang dipilih
-                                                                                                                    </p>
-                                                                                                                </div>
-                                                                                                            `}
+                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                            ` : `
+                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                    <label class="form-label fw-bold text-muted" style="font-size: 0.875rem;">
+                                                                                                                                                                                                        <i class="bi bi-tags-fill me-2"></i>Feedback yang Dipilih
+                                                                                                                                                                                                    </label>
+                                                                                                                                                                                                    <p class="text-muted mb-0 mt-2">
+                                                                                                                                                                                                        <i class="bi bi-info-circle me-2"></i>Tidak ada feedback yang dipilih
+                                                                                                                                                                                                    </p>
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                            `}
                 </div>
             `,
                     width: '600px',

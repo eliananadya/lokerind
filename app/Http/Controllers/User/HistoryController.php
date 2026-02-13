@@ -536,7 +536,7 @@ class HistoryController extends Controller
                 ->where('id', $id)
                 ->where('candidates_id', $candidate->id)
                 ->where('invited_by_company', 1)
-                ->where('status', 'invited')
+                ->where('status', 'Invited')
                 ->first();
 
             if (!$application) {
@@ -579,6 +579,71 @@ class HistoryController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menerima undangan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function rejectInvitation(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $candidate = Candidates::where('user_id', $user->id)->first();
+
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kandidat tidak ditemukan'
+                ], 404);
+            }
+
+            $application = Applications::with('jobPosting.company')
+                ->where('id', $id)
+                ->where('candidates_id', $candidate->id)
+                ->where('invited_by_company', 1)
+                ->where('status', 'Invited')
+                ->first();
+
+            if (!$application) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Undangan tidak ditemukan atau sudah diproses'
+                ], 404);
+            }
+
+            // ✅ Update status ke Rejected
+            $application->update([
+                'status' => 'Rejected',
+            ]);
+
+            Log::info('Invitation rejected', [
+                'application_id' => $id,
+                'candidate_id' => $candidate->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Undangan berhasil ditolak',
+                'data' => [
+                    'company_name' => $application->jobPosting->company->name ?? 'Company',
+                    'job_title' => $application->jobPosting->title ?? 'Job'
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error rejecting invitation', [
+                'application_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menolak undangan: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -707,7 +772,21 @@ class HistoryController extends Controller
                     'message' => 'Rating hanya bisa diberikan untuk aplikasi dengan status "Finished".'
                 ], 422);
             }
+            // ✅ CEK: Apakah rating sudah pernah dihapus admin?
+            $hasApprovedReportFromCompany = Reports::where('application_id', $id)
+                ->where('status', 'approved')
+                ->whereHas('user', function ($q) {
+                    $q->where('role_id', 3); // Report DARI company (role_id = 3)
+                })
+                ->exists();
 
+            // Jika company melaporkan (approved) dan rating_company sudah null, berarti dihapus admin
+            if ($hasApprovedReportFromCompany && is_null($application->rating_company)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rating Anda telah dihapus oleh admin karena dilaporkan perusahaan. Anda tidak dapat memberikan rating lagi.'
+                ], 403);
+            }
             // ✅ Validasi: Cek apakah sudah pernah kasih rating
             if ($application->rating_company) {
                 return response()->json([
@@ -955,7 +1034,7 @@ class HistoryController extends Controller
     private function getDefaultStatuses()
     {
         return [
-            'invited',
+            'Invited',
             'Selection',
             'Pending',
             'Accepted',
@@ -963,5 +1042,27 @@ class HistoryController extends Controller
             'Withdrawn',
             'Finished'
         ];
+    }
+    private function canUserGiveRating($applicationId, $userType)
+    {
+        // Cek apakah ada report yang approved untuk application ini
+        $hasApprovedReport = Reports::where('application_id', $applicationId)
+            ->where('status', 'approved')
+            ->exists();
+
+        if ($hasApprovedReport) {
+            // Cek lebih detail - apakah yang di-approve adalah rating dari user type ini
+            $application = Applications::find($applicationId);
+
+            if ($userType === 'candidate') {
+                // Jika rating_company sudah null DAN ada approved report, berarti sudah dihapus admin
+                return is_null($application->rating_company);
+            } else {
+                // Jika rating_candidates sudah null DAN ada approved report, berarti sudah dihapus admin
+                return is_null($application->rating_candidates);
+            }
+        }
+
+        return true; // Boleh kasih rating
     }
 }
